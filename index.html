@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>OVONovelAI生图</title>
+  <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f6dbe3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="OVONovelAI生图">
@@ -263,17 +264,15 @@ const $=id=>document.getElementById(id);
 const toast=(m,t=2600)=>{const e=$('toast');e.textContent=m;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',t)};
 
 /* ---------- PWA ---------- */
-(function(){
-  const icon=`data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#f6dbe3"/><path d="M256 420C120 330 80 260 110 190c30-70 120-70 146 0 26-70 116-70 146 0 30 70-10 140-146 230z" fill="#e8a0b4" stroke="#fff" stroke-width="14"/><text x="256" y="290" font-size="90" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="bold">OVO</text></svg>')}`;
-  const manifest={name:"OVONovelAI生图",short_name:"OVO生图",start_url:location.href.split('#')[0],display:"standalone",background_color:"#fbf3f5",theme_color:"#f6dbe3",icons:[{src:icon,sizes:"512x512",type:"image/svg+xml",purpose:"any"}]};
-  const l=document.createElement('link');l.rel='manifest';l.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest));document.head.appendChild(l);
-  const a=document.createElement('link');a.rel='apple-touch-icon';a.href=icon;document.head.appendChild(a);
-  const f=document.createElement('link');f.rel='icon';f.href=icon;document.head.appendChild(f);
-  // 若同目录放置 sw.js 则注册（可选，离线缓存）
-  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-    fetch('sw.js',{method:'HEAD'}).then(r=>{if(r.ok)navigator.serviceWorker.register('sw.js')}).catch(()=>{});
-  }
-})();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').then(r=>{
+      console.log('SW 注册成功，范围：',r.scope);
+    }).catch(e=>{
+      console.log('SW 注册失败：',e);
+    });
+  });
+}
 
 /* ---------- settings ---------- */
 const CFG_IDS=['baseUrl','apiKey','apiMode','prompt','negative','ucPreset','qualityToggle','sizePreset','width','height','steps','scale','rescale','sampler','schedule','nSamples','variety','smea','smeaDyn','decrisp','strength','noise','normVibe','crStrength','crFidelity','crStyle','customModel','useCoords'];
