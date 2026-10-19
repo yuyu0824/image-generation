@@ -469,11 +469,14 @@ if(ct.includes('json') || ct.includes('text')){
 // 2. 处理直接返回图片的情况
 if(ct.startsWith('image/'))return [URL.createObjectURL(new Blob([buf],{type:ct}))];
 
-// 3. 尝试解压 ZIP 文件
+// 3. 尝试解压 ZIP 文件 (并过滤掉非图片文件，防止裂图)
 try {
     const zip = await JSZip.loadAsync(buf);
     const res = [];
     for (const n of Object.keys(zip.files)) {
+        // 👇 就是这个过滤：只提取 png/jpg/webp 文件，忽略 json/txt 等参数文件
+        if (!n.match(/\.(png|jpe?g|webp)$/i)) continue; 
+        
         const file = zip.files[n];
         if (file.dir) continue; // 跳过文件夹
         const b = await file.async('blob');
@@ -482,7 +485,7 @@ try {
     if (res.length > 0) return res;
 } catch (e) {
     throw new Error('ZIP解压失败: ' + e.message);
-  }
+}
 
 // 4. 如果都不是，强行显示前200个字符排查
 const preview = new TextDecoder().decode(buf.slice(0, 200));
