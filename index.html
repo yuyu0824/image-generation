@@ -97,6 +97,12 @@ details summary{cursor:pointer;color:var(--rose);font-weight:700;font-size:13px;
   <div class="win">
     <div class="bar">♡ api.settings<span class="dots"><i></i><i></i><i></i></span></div>
     <div class="body">
+      <label>配置预设</label>
+<div class="flex" style="margin-bottom:10px;flex-wrap:wrap">
+  <select id="presetSelect" style="flex:1;min-width:120px"><option value="">— 选择预设 —</option></select>
+  <button class="btn sm" id="savePreset">💾 保存</button>
+  <button class="btn sm" id="delPreset">🗑 删除</button>
+</div>
       <label>接口地址 (Base URL)</label>
       <input id="baseUrl" placeholder="https://example.com">
       <label>sk 密钥</label>
@@ -294,6 +300,60 @@ $('refreshModels').onclick=async()=>{
   }catch(e){toast('刷新失败：'+e.message,4000)}
 };
 $('saveCfg').onclick=()=>{saveCfg();toast('设置已保存 ♡')};
+  /* ---------- API 预设 ---------- */
+const PRESET_KEY='ovoPresets';
+function getPresets(){try{return JSON.parse(localStorage.getItem(PRESET_KEY)||'{}')}catch(e){return {}}}
+function setPresets(o){localStorage.setItem(PRESET_KEY,JSON.stringify(o))}
+function renderPresets(keep){
+  const sel=$('presetSelect');
+  const cur=keep??sel.value;
+  sel.innerHTML='<option value="">— 选择预设 —</option>';
+  const presets=getPresets();
+  Object.keys(presets).sort().forEach(name=>{
+    const o=document.createElement('option');o.value=name;o.textContent=name;sel.appendChild(o);
+  });
+  if(cur&&presets[cur])sel.value=cur;
+}
+$('savePreset').onclick=()=>{
+  const cur=$('presetSelect').value;
+  const name=prompt('给这个预设起个名字（如：站A、站B）',cur||'');
+  if(!name||!name.trim())return;
+  const n=name.trim();
+  const presets=getPresets();
+  presets[n]={baseUrl:$('baseUrl').value,apiKey:$('apiKey').value,apiMode:$('apiMode').value,model:$('model').value,customModel:$('customModel').value};
+  setPresets(presets);
+  renderPresets(n);
+  toast('已保存预设：'+n);
+};
+$('delPreset').onclick=()=>{
+  const name=$('presetSelect').value;
+  if(!name)return toast('先在下拉框选择一个预设');
+  if(!confirm('确定删除预设「'+name+'」？'))return;
+  const presets=getPresets();
+  delete presets[name];
+  setPresets(presets);
+  renderPresets('');
+  toast('已删除预设：'+name);
+};
+$('presetSelect').onchange=()=>{
+  const name=$('presetSelect').value;
+  if(!name)return;
+  const p=getPresets()[name];
+  if(!p)return;
+  $('baseUrl').value=p.baseUrl||'';
+  $('apiKey').value=p.apiKey||'';
+  $('apiMode').value=p.apiMode||'openai';
+  if(p.model){
+    const sel=$('model');
+    if(![...sel.options].some(o=>o.value===p.model)){
+      const o=document.createElement('option');o.value=o.textContent=p.model;sel.appendChild(o);
+    }
+    sel.value=p.model;
+  }
+  $('customModel').value=p.customModel||'';
+  saveCfg();
+  toast('已切换到预设：'+name);
+};
 
 /* ---------- tabs & sliders ---------- */
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.pane').forEach(x=>x.classList.remove('on'));t.classList.add('on');$(t.dataset.p).classList.add('on')});
@@ -449,7 +509,7 @@ function renderHist(){if(!db)return;const all=[];db.transaction('h').objectStore
   g.onclick=()=>{current=[h.src];curIdx=0;lastSeed=h.seed;showCur();$('stSeed').textContent='seed: '+h.seed;window.scrollTo({top:0,behavior:'smooth'})};$('gallery').appendChild(g)})}}}
 $('clearHist').onclick=()=>{if(confirm('确定清空历史？'))db.transaction('h','readwrite').objectStore('h').clear().onsuccess=renderHist};
 
-loadCfg();renderChars();renderImgs();
+loadCfg();renderPresets();renderChars();renderImgs();
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
 </script>
 </body>
