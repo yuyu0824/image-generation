@@ -454,10 +454,34 @@ async function genOnce(seed){
     const r=await fetch(base()+'/ai/generate-image',{method:'POST',headers:h,body:JSON.stringify(body)});
     if(!r.ok)throw new Error((await r.text()).slice(0,300)||r.status);
     const ct=r.headers.get('content-type')||'';const buf=await r.arrayBuffer();
-    if(ct.includes('json')){const j=JSON.parse(new TextDecoder().decode(buf));return await extractImgs(JSON.stringify(j))}
-    if(ct.startsWith('image/'))return [URL.createObjectURL(new Blob([buf],{type:ct}))];
-    const zip=await JSZip.loadAsync(buf);const res=[];for(const n of Object.keys(zip.files)){const b=await zip.files[n].async('blob');res.push(URL.createObjectURL(new Blob([b],{type:'image/png'})))}return res;
+
+// 1. 处理纯文本/JSON 报错
+if(ct.includes('json') || ct.includes('text')){
+    const text = new TextDecoder().decode(buf);
+    try{
+        const j = JSON.parse(text);
+        return await extractImgs(JSON.stringify(j));
+    }catch(e){
+        throw new Error('服务器返回文本: ' + text.slice(0, 200));
+    }
+}
+
+// 2. 处理直接返回图片的情况
+if(ct.startsWith('image/'))return [URL.createObjectURL(new Blob([buf],{type:ct}))];
+
+// 3. 判断是不是 ZIP 文件 (特征：开头两个字节是 PK)
+const isZip = buf.byteLength > 4 && buf[0] === 0x50 && buf[1] === 0x4B;
+if(isZip){
+    const zip=await JSZip.loadAsync(buf);const res=[];
+    for(const n of Object.keys(zip.files)){const b=await zip.files[n].async('blob');res.push(URL.createObjectURL(new Blob([b],{type:'image/png'})))}
+    return res;
+}
+
+// 4. 如果都不是，强行显示前200个字符排查
+const preview = new TextDecoder().decode(buf.slice(0, 200));
+throw new Error('未知返回格式: ' + preview);
   }
+  
   if(mode==='openai'){
     const r=await fetch(base()+'/v1/images/generations',{method:'POST',headers:h,body:JSON.stringify({model:body.model,prompt:body.input,n:body.parameters.n_samples,size:body.parameters.width+'x'+body.parameters.height,response_format:'b64_json',negative_prompt:body.parameters.negative_prompt,action:body.action,parameters:body.parameters,...body.parameters})});
     const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error?.message||JSON.stringify(j).slice(0,300)||r.status);
