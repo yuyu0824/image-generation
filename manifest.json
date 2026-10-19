@@ -2,7 +2,9 @@
   "name": "OVONovelAI生图",
   "short_name": "OVO生图",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#fbf3f5",
   "theme_color": "#f6dbe3",
   "icons": [
