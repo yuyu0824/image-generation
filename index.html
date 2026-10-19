@@ -469,21 +469,20 @@ if(ct.includes('json') || ct.includes('text')){
 // 2. 处理直接返回图片的情况
 if(ct.startsWith('image/'))return [URL.createObjectURL(new Blob([buf],{type:ct}))];
 
-// 3. 尝试解压 ZIP 文件（最稳妥的方式，不管它是不是 PK 开头）
+// 3. 尝试解压 ZIP 文件
 try {
     const zip = await JSZip.loadAsync(buf);
     const res = [];
     for (const n of Object.keys(zip.files)) {
-        // 过滤掉非图片的杂项文件
-        if (n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.webp')) {
-            const b = await zip.files[n].async('blob');
-            res.push(URL.createObjectURL(new Blob([b], { type: 'image/png' })));
-        }
+        const file = zip.files[n];
+        if (file.dir) continue; // 跳过文件夹
+        const b = await file.async('blob');
+        res.push(URL.createObjectURL(b));
     }
     if (res.length > 0) return res;
 } catch (e) {
-    // 如果解压报错，说明根本不是 ZIP，忽略错误继续往下走
-               }
+    throw new Error('ZIP解压失败: ' + e.message);
+  }
 
 // 4. 如果都不是，强行显示前200个字符排查
 const preview = new TextDecoder().decode(buf.slice(0, 200));
