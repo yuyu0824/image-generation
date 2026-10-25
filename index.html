@@ -244,6 +244,7 @@ details summary{cursor:pointer;color:var(--rose);font-weight:700;font-size:13px;
         <button class="btn sm" id="toI2i">↺ 作为底图</button>
         <button class="btn sm" id="toVibe">✧ 作为参考图</button>
         <button class="btn sm" id="reuseSeed">◎ 复用种子</button>
+        <button class="btn sm" id="dlClean">✂ 去除元数据下载</button>
       </div>
     </div>
     <div class="status"><span id="stTxt">done</span><span id="stSeed">seed: -</span></div>
@@ -532,6 +533,26 @@ $('dl').onclick=()=>{if(!current[curIdx])return;const a=document.createElement('
 $('toI2i').onclick=()=>{if(!current[curIdx])return;i2i=current[curIdx];renderImgs();toast('已设为图生图底图')};
 $('toVibe').onclick=()=>{if(!current[curIdx])return;vibes.push({src:current[curIdx],s:.6,ie:1});renderImgs();toast('已加入参考图')};
 $('reuseSeed').onclick=()=>{if(lastSeed!=null){$('seed').value=lastSeed;toast('种子已填入')}};
+
+  /* ---------- 去除元数据下载 ---------- */
+function loadImg(src){return new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src=src})}
+async function cleanBlob(src){
+  const im=await loadImg(src);const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+  const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0);const d=x.getImageData(0,0,c.width,c.height);
+  for(let i=3;i<d.data.length;i+=4)d.data[i]=255; // 把 Alpha 通道拉满，破坏隐写数据
+  x.putImageData(d,0,0);
+  return await new Promise(r=>c.toBlob(r,'image/png'));
+}
+async function dlClean(src,name){
+  if(!src)return toast('没有图片');
+  const b=await cleanBlob(src);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);
+  a.download=name||('OVO_clean_'+(lastSeed||Date.now())+'.png');
+  a.click();
+  toast('已去除元数据（PNG无损，画质不变）');
+}
+$('dlClean').onclick=()=>dlClean(current[curIdx]);
 
 /* ---------- history (IndexedDB) ---------- */
 let db;const dbReq=indexedDB.open('ovo-nai',1);
