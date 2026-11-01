@@ -4,14 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>OVONovelAI生图</title>
-  <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f6dbe3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="OVONovelAI生图">
 <meta name="description" content="OVONovelAI生图 - NovelAI 第三方生图站">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:wght@500;600&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<link href="https://fonts.loli.net/css2?family=Pinyon+Script&family=Cormorant+Garamond:wght@500;600&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+
 <style>
 :root{
   --bg:#fbf3f5;--paper:#fffafb;--pink:#f3c9d5;--pink2:#e8a9bb;--rose:#c9798f;--ink:#7a5a64;--ink2:#a88a93;
@@ -68,14 +67,13 @@ input[type=checkbox]{width:auto;accent-color:var(--rose)}
 .results img{width:80px;height:80px;object-fit:cover;border-radius:6px;border:2px solid var(--line);cursor:pointer}
 .results img.on{border-color:var(--rose)}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
-.gallery .g{position:relative;cursor:pointer}
+.gallery .g{position:relative;cursor:pointer;content-visibility:auto;contain-intrinsic-size:110px}
+.gallery img:not([src]){background:var(--win)}
 .gallery img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
 .status{display:flex;justify-content:space-between;padding:5px 10px;border-top:1px solid var(--line);font-size:11px;color:var(--ink2);background:var(--win)}
 .spin{width:40px;height:40px;border:4px solid var(--pink);border-top-color:var(--rose);border-radius:50%;animation:s 1s linear infinite;margin:0 auto 10px}
 @keyframes s{to{transform:rotate(360deg)}}
 .char{border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:8px;background:#fffcfd}
-  .char.off{opacity:.55;background:#f7f2f4}
-.char.off textarea{background:#faf5f7}
 .char textarea{min-height:50px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;border:1px solid var(--pink2);color:var(--rose);padding:10px 18px;border-radius:20px;box-shadow:var(--shadow);display:none;z-index:99;max-width:90vw}
 .modal{position:fixed;inset:0;background:rgba(122,90,100,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:12px}
@@ -88,6 +86,13 @@ details summary{cursor:pointer;color:var(--rose);font-weight:700;font-size:13px;
 .kv b{color:var(--rose);font-weight:500}.kv div{word-break:break-all;white-space:pre-wrap}
 pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:10px;font-size:11px;max-height:420px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .sec{font-weight:700;color:var(--rose);margin:12px 0 6px;border-bottom:1px dashed var(--pink2);padding-bottom:3px}
+.gallery .g.sel img{border-color:var(--rose);box-shadow:0 0 0 2px var(--rose)}
+.gallery .g .cb{position:absolute;top:4px;left:4px;width:18px;height:18px;accent-color:var(--rose);display:none;z-index:2}
+.gallery.manage .g .cb{display:block}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--pink2);background:#fff;color:var(--rose);border-radius:16px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:700}
+.chip:hover{background:var(--pink);color:#fff}
+.chip .del{color:var(--ink2);margin-left:6px;font-weight:400}
 </style>
 </head>
 <body>
@@ -98,8 +103,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 </header>
 
 <div class="nav"><button class="btn navb on" data-v="viewGen">♡ 生图</button><button class="btn navb" data-v="viewInfo">✧ 图片解析工作台</button></div>
-
-<div class="wrap" id="viewGen">  
+<div class="wrap" id="viewGen">
 <!-- LEFT -->
 <div>
   <div class="win">
@@ -145,11 +149,11 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
       </div>
 
       <div class="pane on" id="p-prompt">
-        <label>画师串（全局前缀）</label>
-<textarea id="artistPrompt" rows="2" placeholder="0.7::artist:bm94199, 0.6::artist:57friend..."></textarea>
-        <label>正向提示词</label>
+        <div class="flex" style="align-items:flex-end"><label style="margin:0">画师串（常驻，自动加在正向最前面）</label><button class="btn sm" id="clrArtist" style="margin-left:auto">清空</button></div>
+        <textarea id="artistStr" rows="2" style="min-height:56px" placeholder="artist:xxx, [artist:yyy], ..."></textarea>
+        <div class="flex" style="align-items:flex-end;margin-top:10px"><label style="margin:0">正向提示词</label><button class="btn sm" id="clrPrompt" style="margin-left:auto">一键清空</button></div>
         <textarea id="prompt" rows="5" placeholder="1girl, pink hair, lace dress, ribbon, soft lighting..."></textarea>
-        <label>反向提示词 (Undesired Content)</label>
+        <div class="flex" style="align-items:flex-end;margin-top:10px"><label style="margin:0">反向提示词 (Undesired Content)</label><button class="btn sm" id="clrNeg" style="margin-left:auto">一键清空</button></div>
         <textarea id="negative" rows="3" placeholder="lowres, bad anatomy..."></textarea>
         <div class="row">
           <div><label>反向预设</label>
@@ -200,7 +204,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
             <select id="schedule"><option>karras</option><option>exponential</option><option>polyexponential</option><option>native</option></select></div>
         </div>
         <div class="row">
-          <div><label>种子 Seed (空=随机)</label><input id="seed" type="number" placeholder="随机"></div>
+          <div><label>种子 Seed (空=随机)</label><div class="flex"><input id="seed" type="number" placeholder="随机"><button class="btn sm" id="randSeed" title="随机种子">🎲</button></div></div>
           <div><label>张数</label><select id="nSamples"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
         </div>
         <label class="chk"><input type="checkbox" id="variety"> Variety+ (skip_cfg_above_sigma)</label>
@@ -240,6 +244,19 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
       <div style="margin-top:14px"><button class="btn main" id="gen">♡ 生成图像 ♡</button></div>
     </div>
   </div>
+
+  <div class="win">
+    <div class="bar">♡ artist.library<span class="dots"><i></i><i></i><i></i></span></div>
+    <div class="body">
+      <div class="hint">收藏画师串 / 常用标签，点一下即可插入正向提示词。</div>
+      <div class="row" style="margin-top:6px">
+        <div><label>名称</label><input id="artName" placeholder="如：望月けい"></div>
+        <div><label>标签串</label><input id="artTags" placeholder="mochizuki kei, ..."></div>
+      </div>
+      <button class="btn sm" id="artAdd" style="margin-top:6px">＋ 收藏</button>
+      <div class="chips" id="artChips"></div>
+    </div>
+  </div>
 </div>
 
 <!-- RIGHT -->
@@ -264,8 +281,26 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   <div class="win">
     <div class="bar">♡ gallery.history<span class="dots"><i></i><i></i><i></i></span></div>
     <div class="body">
-      <div class="flex" style="margin-bottom:8px"><span class="hint" id="hcount"></span><button class="btn sm" id="clearHist" style="margin-left:auto">清空历史</button></div>
+      <div class="flex" style="margin-bottom:8px;flex-wrap:wrap">
+        <span class="hint" id="hcount"></span>
+        <span style="margin-left:auto"></span>
+        <button class="btn sm" id="manageHist">选择</button>
+        <button class="btn sm" id="selAll" style="display:none">全选</button>
+        <button class="btn sm" id="delSel" style="display:none">删除选中</button>
+        <button class="btn sm" id="clearHist">清空</button>
+      </div>
       <div class="gallery" id="gallery"></div>
+    </div>
+  </div>
+
+  <div class="win">
+    <div class="bar">♡ backup.dat<span class="dots"><i></i><i></i><i></i></span></div>
+    <div class="body">
+      <div class="hint">备份包含：接口设置、提示词、画师串收藏、历史图片（含图）。</div>
+      <div class="flex" style="margin-top:8px">
+        <button class="btn sm" id="backupBtn">⇩ 导出备份</button>
+        <button class="btn sm" id="restoreBtn">⇧ 导入备份</button>
+      </div>
     </div>
   </div>
 </div>
@@ -289,30 +324,33 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   <div class="body" id="infoOut"><div class="hint">上传后在此显示正向、反向、种子、步数、采样器等全部数据。</div></div></div>
 </div>
 </div>
-  
 <footer>— THE STRONGER THE WIND, THE STRONGER THE BUTTERFLIES — <br>© OVONovelAI生图 ♡</footer>
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><img id="modalImg"></div>
 
 <input type="file" id="fileIn" accept="image/*" hidden>
+<input type="file" id="restoreIn" accept="application/json,.json" hidden>
 
 <script>
 const $=id=>document.getElementById(id);
 const toast=(m,t=2600)=>{const e=$('toast');e.textContent=m;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',t)};
 
 /* ---------- PWA ---------- */
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('sw.js').then(r=>{
-      console.log('SW 注册成功，范围：',r.scope);
-    }).catch(e=>{
-      console.log('SW 注册失败：',e);
-    });
-  });
-}
+(function(){
+  const icon=`data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#f6dbe3"/><path d="M256 420C120 330 80 260 110 190c30-70 120-70 146 0 26-70 116-70 146 0 30 70-10 140-146 230z" fill="#e8a0b4" stroke="#fff" stroke-width="14"/><text x="256" y="290" font-size="90" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="bold">OVO</text></svg>')}`;
+  const manifest={name:"OVONovelAI生图",short_name:"OVO生图",start_url:location.href.split('#')[0],display:"standalone",background_color:"#fbf3f5",theme_color:"#f6dbe3",icons:[{src:icon,sizes:"512x512",type:"image/svg+xml",purpose:"any"}]};
+  const l=document.createElement('link');l.rel='manifest';l.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest));document.head.appendChild(l);
+  const a=document.createElement('link');a.rel='apple-touch-icon';a.href=icon;document.head.appendChild(a);
+  const f=document.createElement('link');f.rel='icon';f.href=icon;document.head.appendChild(f);
+  // 若同目录放置 sw.js 则注册（可选，离线缓存）
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    fetch('sw.js',{method:'HEAD'}).then(r=>{if(r.ok)navigator.serviceWorker.register('sw.js')}).catch(()=>{});
+  }
+})();
 
+let _jz;function loadJSZip(){if(window.JSZip)return Promise.resolve();return _jz||(_jz=new Promise((ok,no)=>{const urls=['https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js','https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];let i=0;const t=()=>{if(i>=urls.length){_jz=null;return no(new Error('JSZip 加载失败'))}const sc=document.createElement('script');sc.src=urls[i++];sc.onload=ok;sc.onerror=t;document.head.appendChild(sc)};t()}))}
 /* ---------- settings ---------- */
-const CFG_IDS=['baseUrl','apiKey','apiMode','artistPrompt','prompt','negative','ucPreset','qualityToggle','sizePreset','width','height','steps','scale','rescale','sampler','schedule','nSamples','variety','smea','smeaDyn','decrisp','strength','noise','normVibe','crStrength','crFidelity','crStyle','customModel','useCoords'];
+const CFG_IDS=['baseUrl','apiKey','apiMode','prompt','negative','ucPreset','qualityToggle','sizePreset','width','height','steps','scale','rescale','sampler','schedule','nSamples','variety','smea','smeaDyn','decrisp','strength','noise','normVibe','crStrength','crFidelity','crStyle','customModel','useCoords'];
 function saveCfg(){const o={};CFG_IDS.forEach(i=>{const e=$(i);o[i]=e.type==='checkbox'?e.checked:e.value});o.model=$('model').value;o.models=[...$('model').options].map(x=>x.value);o.chars=chars;localStorage.ovoCfg=JSON.stringify(o)}
 function loadCfg(){try{const o=JSON.parse(localStorage.ovoCfg||'{}');if(o.models&&o.models.length)fillModels(o.models);CFG_IDS.forEach(i=>{if(o[i]===undefined)return;const e=$(i);e.type==='checkbox'?e.checked=o[i]:e.value=o[i]});if(o.model)$('model').value=o.model;if(o.chars)chars=o.chars}catch(e){}}
 function fillModels(list){const s=$('model');s.innerHTML='';list.forEach(m=>{const o=document.createElement('option');o.value=o.textContent=m;s.appendChild(o)});$('mcount').textContent=list.length+'个'}
@@ -330,6 +368,10 @@ $('refreshModels').onclick=async()=>{
     fillModels(list);saveCfg();toast('已获取 '+list.length+' 个模型 ♡');
   }catch(e){toast('刷新失败：'+e.message,4000)}
 };
+(()=>{const a=$('artistStr');a.value=localStorage.ovoArtist||'';a.addEventListener('input',()=>localStorage.ovoArtist=a.value);
+$('clrArtist').onclick=()=>{if(a.value&&confirm('清空画师串？')){a.value='';localStorage.ovoArtist=''}};
+$('clrPrompt').onclick=()=>{$('prompt').value='';saveCfg();toast('正向已清空（画师串保留）')};
+$('clrNeg').onclick=()=>{$('negative').value='';saveCfg();toast('反向已清空')}})();
 $('saveCfg').onclick=()=>{saveCfg();toast('设置已保存 ♡')};
   /* ---------- API 预设 ---------- */
 const PRESET_KEY='ovoPresets';
@@ -337,6 +379,7 @@ function getPresets(){try{return JSON.parse(localStorage.getItem(PRESET_KEY)||'{
 function setPresets(o){localStorage.setItem(PRESET_KEY,JSON.stringify(o))}
 function renderPresets(keep){
   const sel=$('presetSelect');
+  if(!sel) return;
   const cur=keep??sel.value;
   sel.innerHTML='<option value="">— 选择预设 —</option>';
   const presets=getPresets();
@@ -393,32 +436,14 @@ $('sizePreset').onchange=()=>{const v=$('sizePreset').value;if(v!=='custom'){con
 
 /* ---------- characters ---------- */
 let chars=[];
-function renderChars(){
-  const box=$('chars');box.innerHTML='';
-  chars.forEach((c,i)=>{
-    const d=document.createElement('div');
-    d.className='char'+(c.enabled===false?' off':'');
-    d.innerHTML=`<div class="flex">
-      <label class="chk" style="margin:0"><input type="checkbox" class="en" ${c.enabled!==false?'checked':''}> 角色 ${i+1}</label>
-      <button class="btn sm del" style="margin-left:auto">删除</button>
-    </div>
-    <label>正向</label><textarea>${c.p||''}</textarea>
-    <label>反向</label><textarea>${c.n||''}</textarea>
-    <div class="row"><div><label>X 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.x??0.5}"></div><div><label>Y 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.y??0.5}"></div></div>`;
-    const en=d.querySelector('.en');
-    const [ta1,ta2]=d.querySelectorAll('textarea');
-    const [x,y]=d.querySelectorAll('input[type=number]');
-    en.onchange=()=>{c.enabled=en.checked;d.classList.toggle('off',!en.checked)};
-    ta1.oninput=()=>c.p=ta1.value;
-    ta2.oninput=()=>c.n=ta2.value;
-    x.oninput=()=>c.x=+x.value;
-    y.oninput=()=>c.y=+y.value;
-    d.querySelector('.del').onclick=()=>{chars.splice(i,1);renderChars()};
-    box.appendChild(d);
-  });
-}
-$('addChar').onclick=()=>{if(chars.length>=6)return toast('最多6个角色');chars.push({p:'',n:'',x:.5,y:.5,enabled:true});renderChars()};
-  
+function renderChars(){const box=$('chars');box.innerHTML='';chars.forEach((c,i)=>{const d=document.createElement('div');d.className='char';d.innerHTML=`<div class="flex"><b style="color:var(--rose)">角色 ${i+1}</b><button class="btn sm" style="margin-left:auto">删除</button></div>
+<label>正向</label><textarea>${c.p||''}</textarea><label>反向</label><textarea>${c.n||''}</textarea>
+<div class="row"><div><label>X 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.x??0.5}"></div><div><label>Y 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.y??0.5}"></div></div>`;
+const [ta1,ta2]=d.querySelectorAll('textarea');const [x,y]=d.querySelectorAll('input');
+ta1.oninput=()=>c.p=ta1.value;ta2.oninput=()=>c.n=ta2.value;x.oninput=()=>c.x=+x.value;y.oninput=()=>c.y=+y.value;
+d.querySelector('button').onclick=()=>{chars.splice(i,1);renderChars()};box.appendChild(d)})}
+$('addChar').onclick=()=>{if(chars.length>=6)return toast('最多6个角色');chars.push({p:'',n:'',x:.5,y:.5});renderChars()};
+
 /* ---------- images ---------- */
 let i2i=null,mask=null,vibes=[],crefs=[];
 const readFile=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
@@ -443,17 +468,7 @@ const UC={0:'nsfw, lowres, artistic error, film grain, scan artifacts, worst qua
 function ver(m){m=m.toLowerCase();return /4-5|4\.5/.test(m)?'v45':/-4|v4/.test(m)?'v4':'v3'}
 function buildParams(seed){
   const m=model(),v=ver(m),isV4=v!=='v3';
-  const artist = $('artistPrompt').value.trim();
-let prompt = $('prompt').value.trim();
-if (artist) prompt = artist + (prompt ? ', ' + prompt : '');
-
-// ★ OpenAI 中转模式下：把角色提示词拼进主 prompt
-if($('apiMode').value==='openai'){
-  const charList=chars.filter(c=>c.enabled!==false&&c.p&&c.p.trim());
-  if(charList.length) prompt += (prompt?', ':'') + charList.map(c=>c.p.trim()).join(', ');
-}
-
-if($('qualityToggle').checked)prompt+=QUALITY[v];;
+  const _art=$('artistStr').value.trim().replace(/,+$/,'');let prompt=$('prompt').value.trim();if(_art)prompt=prompt?_art+', '+prompt:_art;if($('qualityToggle').checked)prompt+=QUALITY[v];
   let neg=$('negative').value.trim();const ucp=UC[$('ucPreset').value];if(ucp)neg=neg?ucp+', '+neg:ucp;
   const p={params_version:3,width:+$('width').value,height:+$('height').value,scale:+$('scale').value,sampler:$('sampler').value,steps:+$('steps').value,n_samples:+$('nSamples').value,
     ucPreset:+$('ucPreset').value,qualityToggle:$('qualityToggle').checked,dynamic_thresholding:$('decrisp').checked,controlnet_strength:1,legacy:false,add_original_image:true,
@@ -461,9 +476,10 @@ if($('qualityToggle').checked)prompt+=QUALITY[v];;
     seed,negative_prompt:neg,deliberate_euler_ancestral_bug:false,prefer_brownian:true,sm:$('smea').checked&&!isV4,sm_dyn:$('smeaDyn').checked&&!isV4,
     normalize_reference_strength_multiple:$('normVibe').checked,use_coords:$('useCoords').checked};
   if(isV4){
-    const cc=chars.filter(c=>c.enabled!==false&&c.p&&c.p.trim());
+    const cc=chars.filter(c=>c.p);
     p.v4_prompt={caption:{base_caption:prompt,char_captions:cc.map(c=>({char_caption:c.p,centers:[{x:c.x??.5,y:c.y??.5}]}))},use_coords:$('useCoords').checked,use_order:true};
     p.v4_negative_prompt={caption:{base_caption:neg,char_captions:cc.map(c=>({char_caption:c.n||'',centers:[{x:c.x??.5,y:c.y??.5}]}))},legacy_uc:false};
+    p.characterPrompts=cc.map(c=>({prompt:c.p,uc:c.n||'',center:{x:c.x??.5,y:c.y??.5},enabled:true}));
   }
   if(vibes.length){p.reference_image_multiple=vibes.map(x=>b64(x.src));p.reference_strength_multiple=vibes.map(x=>x.s);p.reference_information_extracted_multiple=vibes.map(x=>x.ie)}
   if(crefs.length){p.director_reference_images=crefs.map(b64);p.director_reference_descriptions=crefs.map(()=>({caption:{base_caption:$('crStyle').checked?'character&style':'character',char_captions:[]},legacy_uc:false}));
@@ -471,7 +487,15 @@ if($('qualityToggle').checked)prompt+=QUALITY[v];;
   let action='generate',mdl=m;
   if(i2i){p.image=b64(i2i);p.strength=+$('strength').value;p.noise=+$('noise').value;p.extra_noise_seed=seed;action='img2img';
     if(mask){p.mask=b64(mask);action='infill';if(!/inpainting/.test(mdl))mdl=mdl+'-inpainting';delete p.strength;delete p.noise}}
-  return {input:prompt,model:mdl,action,parameters:p};
+  // ★ 修复：在 OpenAI 或 Chat 模式下，把角色框拼进发给服务器的 input
+let finalInput = prompt;
+if($('apiMode').value === 'openai' || $('apiMode').value === 'chat'){
+  const charList=chars.filter(c=>c.enabled!==false && c.p && c.p.trim());
+  if(charList.length){
+    finalInput += (finalInput ? ', ' : '') + charList.map(c=>c.p.trim()).join(', ');
+  }
+}
+return {input:finalInput, model:mdl, action, parameters:p};
 }
 
 /* ---------- generate ---------- */
@@ -487,44 +511,16 @@ async function genOnce(seed){
     const r=await fetch(base()+'/ai/generate-image',{method:'POST',headers:h,body:JSON.stringify(body)});
     if(!r.ok)throw new Error((await r.text()).slice(0,300)||r.status);
     const ct=r.headers.get('content-type')||'';const buf=await r.arrayBuffer();
-
-// 1. 处理纯文本/JSON 报错
-if(ct.includes('json') || ct.includes('text')){
-    const text = new TextDecoder().decode(buf);
-    try{
-        const j = JSON.parse(text);
-        return await extractImgs(JSON.stringify(j));
-    }catch(e){
-        throw new Error('服务器返回文本: ' + text.slice(0, 200));
-    }
+    if(ct.includes('json')){const j=JSON.parse(new TextDecoder().decode(buf));return await extractImgs(JSON.stringify(j))}
+    if(ct.startsWith('image/'))return [URL.createObjectURL(new Blob([buf],{type:ct}))];
+    await loadJSZip();const zip=await JSZip.loadAsync(buf);const res=[];
+for(const n of Object.keys(zip.files)){
+  if(!n.match(/\.(png|jpe?g|webp)$/i)) continue;
+  const b=await zip.files[n].async('blob');
+  res.push(URL.createObjectURL(b));
 }
-
-// 2. 处理直接返回图片的情况
-if(ct.startsWith('image/'))return [URL.createObjectURL(new Blob([buf],{type:ct}))];
-
-// 3. 尝试解压 ZIP 文件 (并过滤掉非图片文件，防止裂图)
-try {
-    const zip = await JSZip.loadAsync(buf);
-    const res = [];
-    for (const n of Object.keys(zip.files)) {
-        // 👇 就是这个过滤：只提取 png/jpg/webp 文件，忽略 json/txt 等参数文件
-        if (!n.match(/\.(png|jpe?g|webp)$/i)) continue; 
-        
-        const file = zip.files[n];
-        if (file.dir) continue; // 跳过文件夹
-        const b = await file.async('blob');
-        res.push(URL.createObjectURL(b));
-    }
-    if (res.length > 0) return res;
-} catch (e) {
-    throw new Error('ZIP解压失败: ' + e.message);
-}
-
-// 4. 如果都不是，强行显示前200个字符排查
-const preview = new TextDecoder().decode(buf.slice(0, 200));
-throw new Error('未知返回格式: ' + preview);
+return res;
   }
-  
   if(mode==='openai'){
     const r=await fetch(base()+'/v1/images/generations',{method:'POST',headers:h,body:JSON.stringify({model:body.model,prompt:body.input,n:body.parameters.n_samples,size:body.parameters.width+'x'+body.parameters.height,response_format:'b64_json',negative_prompt:body.parameters.negative_prompt,action:body.action,parameters:body.parameters,...body.parameters})});
     const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error?.message||JSON.stringify(j).slice(0,300)||r.status);
@@ -540,7 +536,7 @@ throw new Error('未知返回格式: ' + preview);
   const imgs=await extractImgs(JSON.stringify(j));if(!imgs.length)throw new Error('响应中未找到图片：'+(j.choices?.[0]?.message?.content||'').slice(0,200));return imgs;
 }
 $('gen').onclick=async()=>{
-  if(busy)return;if(!base()||!key())return toast('请先填写接口地址和sk密钥');if(!$('prompt').value.trim())return toast('请填写正向提示词');
+  if(busy)return;if(!base()||!key())return toast('请先填写接口地址和sk密钥');if(!$('prompt').value.trim()&&!$('artistStr').value.trim())return toast('请填写正向提示词');
   saveCfg();busy=true;$('gen').disabled=true;$('gen').textContent='生成中…';
   $('stage').innerHTML='<div class="empty"><div class="spin"></div>正在绘制 ♡</div>';$('stTxt').textContent='loading…';
   const seed=$('seed').value?+$('seed').value:Math.floor(Math.random()*4294967295);
@@ -566,46 +562,55 @@ $('toI2i').onclick=()=>{if(!current[curIdx])return;i2i=current[curIdx];renderImg
 $('toVibe').onclick=()=>{if(!current[curIdx])return;vibes.push({src:current[curIdx],s:.6,ie:1});renderImgs();toast('已加入参考图')};
 $('reuseSeed').onclick=()=>{if(lastSeed!=null){$('seed').value=lastSeed;toast('种子已填入')}};
 
-  /* ---------- 去除元数据下载 ---------- */
-function loadImg(src){return new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src=src})}
-async function cleanBlob(src){
-  const im=await loadImg(src);const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
-  const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0);const d=x.getImageData(0,0,c.width,c.height);
-  for(let i=3;i<d.data.length;i+=4)d.data[i]=255; // 把 Alpha 通道拉满，破坏隐写数据
-  x.putImageData(d,0,0);
-  return await new Promise(r=>c.toBlob(r,'image/png'));
-}
-async function dlClean(src,name){
-  if(!src)return toast('没有图片');
-  const b=await cleanBlob(src);
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(b);
-  a.download=name||('OVO_clean_'+(lastSeed||Date.now())+'.png');
-  a.click();
-  toast('已去除元数据（PNG无损，画质不变）');
-}
-$('dlClean').onclick=()=>dlClean(current[curIdx]);
-
 /* ---------- history (IndexedDB) ---------- */
 let db;const dbReq=indexedDB.open('ovo-nai',1);
 dbReq.onupgradeneeded=()=>dbReq.result.createObjectStore('h',{keyPath:'id',autoIncrement:true});
 dbReq.onsuccess=()=>{db=dbReq.result;renderHist()};
 function addHist(src,seed){if(!db)return;db.transaction('h','readwrite').objectStore('h').add({src,seed,prompt:$('prompt').value,t:Date.now()}).onsuccess=renderHist}
-function renderHist(){if(!db)return;const all=[];db.transaction('h').objectStore('h').openCursor(null,'prev').onsuccess=e=>{const c=e.target.result;if(c&&all.length<200){all.push(c.value);c.continue()}else{
-  $('gallery').innerHTML='';$('hcount').textContent='共 '+all.length+' 张';all.forEach(h=>{const g=document.createElement('div');g.className='g';const im=new Image();im.src=h.src;im.loading='lazy';im.title='seed '+h.seed+'\n'+h.prompt;g.appendChild(im);
-  g.onclick=()=>{current=[h.src];curIdx=0;lastSeed=h.seed;showCur();$('stSeed').textContent='seed: '+h.seed;window.scrollTo({top:0,behavior:'smooth'})};$('gallery').appendChild(g)})}}}
-$('clearHist').onclick=()=>{if(confirm('确定清空历史？'))db.transaction('h','readwrite').objectStore('h').clear().onsuccess=renderHist};
+let manageMode=false,selIds=new Set();
+let histShow=30,histIO=null;
+function renderHist(){if(!db)return;const st=db.transaction('h').objectStore('h');st.count().onsuccess=ce=>{const total=ce.target.result;const all=[];
+  st.openCursor(null,'prev').onsuccess=e=>{const c=e.target.result;if(c&&all.length<histShow){all.push(c.value);c.continue();return}
+  const gal=$('gallery');gal.innerHTML='';gal.classList.toggle('manage',manageMode);
+  const upd=()=>$('hcount').textContent='共 '+total+' 张'+(manageMode?' · 已选 '+selIds.size:'');upd();
+  if(histIO)histIO.disconnect();histIO='IntersectionObserver' in window?new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting){x.target.src=x.target.dataset.src;histIO.unobserve(x.target)}}),{rootMargin:'200px'}):null;
+  const frag=document.createDocumentFragment();
+  all.forEach(h=>{const g=document.createElement('div');g.className='g'+(selIds.has(h.id)?' sel':'');
+  const im=new Image();im.decoding='async';im.title='seed '+h.seed+'\n'+h.prompt;if(histIO){im.dataset.src=h.src;histIO.observe(im)}else im.src=h.src;g.appendChild(im);
+  if(manageMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=selIds.has(h.id);
+    const tog=on=>{on?selIds.add(h.id):selIds.delete(h.id);cb.checked=on;g.classList.toggle('sel',on);upd()};
+    cb.onclick=ev=>ev.stopPropagation();cb.onchange=()=>tog(cb.checked);g.appendChild(cb);g.onclick=()=>tog(!selIds.has(h.id))}
+  else g.onclick=()=>{current=[h.src];curIdx=0;lastSeed=h.seed;showCur();$('stSeed').textContent='seed: '+h.seed;window.scrollTo({top:0,behavior:'smooth'})};
+  frag.appendChild(g)});gal.appendChild(frag);
+  if(total>all.length){const b=document.createElement('button');b.className='btn sm';b.style.gridColumn='1/-1';b.textContent='加载更多（还有 '+(total-all.length)+' 张）';b.onclick=()=>{histShow+=30;renderHist()};gal.appendChild(b)}
+  }}}
+$('manageHist').onclick=()=>{manageMode=!manageMode;selIds.clear();$('manageHist').textContent=manageMode?'完成':'选择';$('selAll').style.display=manageMode?'':'none';$('delSel').style.display=manageMode?'':'none';renderHist()};
+$('selAll').onclick=()=>{if(!db)return;db.transaction('h').objectStore('h').getAllKeys().onsuccess=e=>{selIds=new Set(e.target.result);renderHist()}};
+$('delSel').onclick=()=>{if(!selIds.size)return toast('请先勾选要删除的图片');if(!confirm('删除选中的 '+selIds.size+' 张？'))return;
+  const st=db.transaction('h','readwrite').objectStore('h');selIds.forEach(id=>st.delete(id));st.transaction.oncomplete=()=>{selIds.clear();renderHist();toast('已删除')}};
+$('clearHist').onclick=()=>{if(confirm('确定清空全部历史？'))db.transaction('h','readwrite').objectStore('h').clear().onsuccess=renderHist};
 
-loadCfg();renderPresets();renderChars();renderImgs();
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
-/* ---------- 图片解析工作台 (Inspector) ---------- */
+
+/* ---------- nav / seed ---------- */
 document.querySelectorAll('.navb').forEach(b=>b.onclick=()=>{document.querySelectorAll('.navb').forEach(x=>x.classList.remove('on'));b.classList.add('on');['viewGen','viewInfo'].forEach(v=>$(v).style.display=v===b.dataset.v?'':'none')});
+$('randSeed').onclick=()=>{$('seed').value=Math.floor(Math.random()*4294967295);toast('已随机种子 '+$('seed').value)};
 
+/* ---------- strip metadata (PNG无损重编码，清除文本块与Alpha隐写) ---------- */
+function loadImg(src){return new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src=src})}
+async function cleanBlob(src){
+  const im=await loadImg(src);const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+  const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0);const d=x.getImageData(0,0,c.width,c.height);
+  for(let i=3;i<d.data.length;i+=4)d.data[i]=255;x.putImageData(d,0,0);
+  return await new Promise(r=>c.toBlob(r,'image/png'));
+}
+async function dlClean(src,name){if(!src)return toast('没有图片');const b=await cleanBlob(src);const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name||('OVO_clean_'+Date.now()+'.png');a.click();toast('已去除元数据（PNG无损，画质不变）')}
+$('dlClean').onclick=()=>dlClean(current[curIdx]);
+
+/* ---------- inspector ---------- */
 let infoSrc=null,infoData=null;
 async function gunzip(u8){const ds=new DecompressionStream('gzip');return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer())}
 async function inflate(u8){const ds=new DecompressionStream('deflate');return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer())}
 const td=new TextDecoder();
-
 async function pngChunks(buf){
   const u=new Uint8Array(buf),out={};if(u[0]!==0x89||u[1]!==0x50)return out;
   const dv=new DataView(buf);let p=8;
@@ -616,7 +621,6 @@ async function pngChunks(buf){
     if(type==='IEND')break}
   return out;
 }
-
 async function stealth(src){
   const im=await loadImg(src);const w=im.naturalWidth,h=im.naturalHeight,c=document.createElement('canvas');c.width=w;c.height=h;
   const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0);const a=x.getImageData(0,0,w,h).data;
@@ -628,7 +632,6 @@ async function stealth(src){
 }
 function tryJSON(t){try{return JSON.parse(t)}catch(e){return null}}
 function esc(t){return String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
-
 async function inspect(src,buf){
   infoSrc=src;$('infoStage').innerHTML='';const im=new Image();im.src=src;im.onclick=()=>openModal(src);$('infoStage').appendChild(im);
   $('infoOut').innerHTML='<div class="spin"></div>';
@@ -653,20 +656,18 @@ async function inspect(src,buf){
   h+='<div class="sec">原始数据</div><pre class="raw">'+esc(JSON.stringify(infoData,null,2))+'</pre>';
   $('infoOut').innerHTML=h;
 }
-
 bindDrop('infoDrop',async d=>inspect(d));
 $('toInfo').onclick=()=>{if(!current[curIdx])return toast('没有图片');document.querySelector('[data-v=viewInfo]').click();inspect(current[curIdx])};
 $('infoClean').onclick=()=>dlClean(infoSrc);
 $('infoCopy').onclick=()=>{if(!infoData)return;navigator.clipboard.writeText(JSON.stringify(infoData,null,2));toast('已复制')};
-
-// ★ 核心修改：套用参数时，自动拆分画师串
 $('infoApply').onclick=()=>{
   const c=infoData?.parsed;if(!c)return toast('没有可套用的参数');
   const set=(id,v)=>{if(v!=null&&$(id)){$(id).value=v;$(id).dispatchEvent(new Event('input'))}};
   
+  // 1. 获取完整的正向提示词
   let fullPrompt = c.v4_prompt?.caption?.base_caption || c.prompt || infoData.pngText.Description || '';
   
-  // 智能提取画师串特征
+  // 2. 智能提取画师串特征并分离
   const artistRegex = /(?:^|,\s*)([0-9.]+\s*::\s*artist\s*:[^,]+::?|[0-9.]+\s*::\s*artist\s*:[^,]+)/gi;
   let artistMatches = [];
   let match;
@@ -680,27 +681,68 @@ $('infoApply').onclick=()=>{
     artistMatches.forEach(m => { remainder = remainder.replace(m, ''); });
     remainder = remainder.replace(/^[\s,]+/, '').trim();
     
-    set('artistPrompt', artistStr); // 填入画师框
-    set('prompt', remainder);       // 剩下的填正向框
+    // ⚠️ 注意：作者最新版的画师串输入框 id 是 artistStr（如果是旧版可能是 artistPrompt，这里统一用 artistStr）
+    if($('artistStr')) set('artistStr', artistStr);
+    else if($('artistPrompt')) set('artistPrompt', artistStr);
+    
+    set('prompt', remainder);       // 剩下的纯画面词填正向框
   } else {
+    // 没检测到特殊画师串，全塞进正向
     set('prompt', fullPrompt);
   }
 
+  // 3. 填回其他参数
   set('negative',c.v4_negative_prompt?.caption?.base_caption||c.uc);
   set('seed',c.seed);set('steps',c.steps);set('scale',c.scale);set('rescale',c.cfg_rescale);set('sampler',c.sampler);set('schedule',c.noise_schedule);
   if(c.width){$('sizePreset').value='custom';set('width',c.width);set('height',c.height)}
   
-  // 注意：原版会自动关闭质量和反向预设，这里我们保留你的习惯
+  // 4. 还原角色框和基础设置
   $('ucPreset').value='3';$('qualityToggle').checked=false;
-  
   const cc=c.v4_prompt?.caption?.char_captions;
   if(cc?.length){
     chars=cc.map((x,i)=>({p:x.char_caption,n:c.v4_negative_prompt?.caption?.char_captions?.[i]?.char_caption||'',x:x.centers?.[0]?.x??.5,y:x.centers?.[0]?.y??.5,enabled:true}));
     renderChars();
   }
+  
   document.querySelector('[data-v=viewGen]').click();
-  toast('✅ 已套用参数并自动分离画师串');
+  toast('✅ 参数已套用，并自动分离了画师串');
 };
+  
+/* ---------- artist library ---------- */
+let artists=[];
+try{artists=JSON.parse(localStorage.ovoArtists||'[]')}catch(e){}
+function saveArtists(){localStorage.ovoArtists=JSON.stringify(artists)}
+function renderArtists(){const box=$('artChips');box.innerHTML='';artists.forEach((a,i)=>{const c=document.createElement('span');c.className='chip';c.title=a.tags;c.innerHTML=esc(a.name)+'<span class="del">×</span>';
+  c.onclick=()=>{const p=$('prompt');p.value=p.value.trim()?p.value.trim().replace(/,+$/,'')+', '+a.tags:a.tags;toast('已插入「'+a.name+'」到正向')};
+  c.querySelector('.del').onclick=ev=>{ev.stopPropagation();if(confirm('删除「'+a.name+'」？')){artists.splice(i,1);saveArtists();renderArtists()}};
+  box.appendChild(c)})}
+$('artAdd').onclick=()=>{const n=$('artName').value.trim(),t=$('artTags').value.trim();if(!n||!t)return toast('请填写名称和标签串');artists.push({name:n,tags:t});saveArtists();renderArtists();$('artName').value='';$('artTags').value='';toast('已收藏 ♡')};
+
+/* ---------- backup / restore ---------- */
+function dbAll(){return new Promise(r=>{if(!db)return r([]);db.transaction('h').objectStore('h').getAll().onsuccess=e=>r(e.target.result||[])})}
+$('backupBtn').onclick=async()=>{
+  toast('正在打包备份…');
+  const hist=await dbAll();
+  const data={app:'OVONovelAI',ver:3,time:new Date().toISOString(),cfg:JSON.parse(localStorage.ovoCfg||'{}'),artists,history:hist,artistStr:localStorage.ovoArtist||''};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='OVO_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  toast('备份已导出（'+hist.length+' 张历史）♡');
+};
+$('restoreBtn').onclick=()=>{const fi=$('restoreIn');fi.value='';fi.onchange=async()=>{
+  const f=fi.files[0];if(!f)return;
+  try{
+    const data=JSON.parse(await f.text());
+    if(data.app!=='OVONovelAI'&&!confirm('不像本站的备份文件，仍要导入吗？'))return;
+    if(data.cfg)localStorage.ovoCfg=JSON.stringify(data.cfg);
+    if(data.artists){artists=data.artists;saveArtists();renderArtists()}
+    if(data.artistStr!==undefined){localStorage.ovoArtist=data.artistStr;if($('artistStr'))$('artistStr').value=data.artistStr;}
+    if(data.history&&db){const st=db.transaction('h','readwrite').objectStore('h');st.clear();data.history.forEach(h=>{delete h.id;st.add(h)});await new Promise(r=>st.transaction.oncomplete=r);renderHist()}
+    loadCfg();renderChars();toast('备份已恢复 ♡');
+  }catch(e){toast('导入失败：'+e.message,4000)}
+};fi.click()};
+
+loadCfg();renderPresets();renderChars();renderImgs();renderArtists();
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
 </script>
 </body>
 </html>
