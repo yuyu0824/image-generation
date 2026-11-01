@@ -287,6 +287,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
         <button class="btn sm" id="manageHist">选择</button>
         <button class="btn sm" id="selAll" style="display:none">全选</button>
         <button class="btn sm" id="delSel" style="display:none">删除选中</button>
+        <button class="btn sm" id="dlSel" style="display:none">下载选中</button>
         <button class="btn sm" id="clearHist">清空</button>
       </div>
       <div class="gallery" id="gallery"></div>
@@ -584,10 +585,49 @@ function renderHist(){if(!db)return;const st=db.transaction('h').objectStore('h'
   frag.appendChild(g)});gal.appendChild(frag);
   if(total>all.length){const b=document.createElement('button');b.className='btn sm';b.style.gridColumn='1/-1';b.textContent='加载更多（还有 '+(total-all.length)+' 张）';b.onclick=()=>{histShow+=30;renderHist()};gal.appendChild(b)}
   }}}
-$('manageHist').onclick=()=>{manageMode=!manageMode;selIds.clear();$('manageHist').textContent=manageMode?'完成':'选择';$('selAll').style.display=manageMode?'':'none';$('delSel').style.display=manageMode?'':'none';renderHist()};
+$('manageHist').onclick=()=>{manageMode=!manageMode;selIds.clear();$('manageHist').textContent=manageMode?'完成':'选择';$('selAll').style.display=manageMode?'':'none';$('delSel').style.display=manageMode?'':'none';$('dlSel').style.display=manageMode?'':'none';renderHist()};
 $('selAll').onclick=()=>{if(!db)return;db.transaction('h').objectStore('h').getAllKeys().onsuccess=e=>{selIds=new Set(e.target.result);renderHist()}};
 $('delSel').onclick=()=>{if(!selIds.size)return toast('请先勾选要删除的图片');if(!confirm('删除选中的 '+selIds.size+' 张？'))return;
   const st=db.transaction('h','readwrite').objectStore('h');selIds.forEach(id=>st.delete(id));st.transaction.oncomplete=()=>{selIds.clear();renderHist();toast('已删除')}};
+
+  $('dlSel').onclick=async()=>{
+  if(!selIds.size)return toast('请先勾选要下载的图片');
+  toast('正在打包，请稍候...', 4000);
+  try {
+    await loadJSZip();
+    const zip = new JSZip();
+    const st = db.transaction('h').objectStore('h');
+    
+    // 读取所有历史记录
+    const all = await new Promise((resolve) => {
+      st.getAll().onsuccess = e => resolve(e.target.result);
+    });
+    
+    // 过滤出勾选的图片
+    const toDl = all.filter(h => selIds.has(h.id));
+    let count = 0;
+    
+    // 循环把图片塞进 ZIP
+    for(const h of toDl){
+      const blob = await (await fetch(h.src)).blob();
+      // 用 种子_时间 命名，方便区分
+      const name = `OVO_${h.seed || 'unknown'}_${h.t || Date.now()}.png`;
+      zip.file(name, blob);
+      count++;
+    }
+    
+    // 生成并下载 ZIP
+    const content = await zip.generateAsync({type:"blob"});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = `OVO_batch_${Date.now()}.zip`;
+    a.click();
+    
+    toast(`✅ 成功打包下载 ${count} 张图片`);
+  } catch(e) {
+    toast('打包下载失败: ' + e.message);
+  }
+};
 $('clearHist').onclick=()=>{if(confirm('确定清空全部历史？'))db.transaction('h','readwrite').objectStore('h').clear().onsuccess=renderHist};
 
 
