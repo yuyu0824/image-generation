@@ -248,7 +248,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   <div class="win">
     <div class="bar">♡ artist.library<span class="dots"><i></i><i></i><i></i></span></div>
     <div class="body">
-      <div class="hint">收藏画师串 / 常用标签，点一下即可插入正向提示词。</div>
+      <div class="hint">收藏画师串，点一下即可插入到「画师串」输入框。</div>
       <div class="row" style="margin-top:6px">
         <div><label>名称</label><input id="artName" placeholder="如：望月けい"></div>
         <div><label>标签串</label><input id="artTags" placeholder="mochizuki kei, ..."></div>
@@ -713,7 +713,7 @@ let artists=[];
 try{artists=JSON.parse(localStorage.ovoArtists||'[]')}catch(e){}
 function saveArtists(){localStorage.ovoArtists=JSON.stringify(artists)}
 function renderArtists(){const box=$('artChips');box.innerHTML='';artists.forEach((a,i)=>{const c=document.createElement('span');c.className='chip';c.title=a.tags;c.innerHTML=esc(a.name)+'<span class="del">×</span>';
-  c.onclick=()=>{const p=$('prompt');p.value=p.value.trim()?p.value.trim().replace(/,+$/,'')+', '+a.tags:a.tags;toast('已插入「'+a.name+'」到正向')};
+  c.onclick=()=>{const p=$('artistStr');p.value=p.value.trim()?p.value.trim().replace(/,+$/,'')+', '+a.tags:a.tags;p.dispatchEvent(new Event('input'));toast('已插入「'+a.name+'」到画师串')};
   c.querySelector('.del').onclick=ev=>{ev.stopPropagation();if(confirm('删除「'+a.name+'」？')){artists.splice(i,1);saveArtists();renderArtists()}};
   box.appendChild(c)})}
 $('artAdd').onclick=()=>{const n=$('artName').value.trim(),t=$('artTags').value.trim();if(!n||!t)return toast('请填写名称和标签串');artists.push({name:n,tags:t});saveArtists();renderArtists();$('artName').value='';$('artTags').value='';toast('已收藏 ♡')};
