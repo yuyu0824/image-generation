@@ -137,6 +137,8 @@ details summary{cursor:pointer;color:var(--rose);font-weight:700;font-size:13px;
       </div>
 
       <div class="pane on" id="p-prompt">
+        <label>画师串（全局前缀）</label>
+<textarea id="artistPrompt" rows="2" placeholder="0.7::artist:bm94199, 0.6::artist:57friend..."></textarea>
         <label>正向提示词</label>
         <textarea id="prompt" rows="5" placeholder="1girl, pink hair, lace dress, ribbon, soft lighting..."></textarea>
         <label>反向提示词 (Undesired Content)</label>
@@ -282,7 +284,7 @@ if('serviceWorker' in navigator){
 }
 
 /* ---------- settings ---------- */
-const CFG_IDS=['baseUrl','apiKey','apiMode','prompt','negative','ucPreset','qualityToggle','sizePreset','width','height','steps','scale','rescale','sampler','schedule','nSamples','variety','smea','smeaDyn','decrisp','strength','noise','normVibe','crStrength','crFidelity','crStyle','customModel','useCoords'];
+const CFG_IDS=['baseUrl','apiKey','apiMode','artistPrompt','prompt','negative','ucPreset','qualityToggle','sizePreset','width','height','steps','scale','rescale','sampler','schedule','nSamples','variety','smea','smeaDyn','decrisp','strength','noise','normVibe','crStrength','crFidelity','crStyle','customModel','useCoords'];
 function saveCfg(){const o={};CFG_IDS.forEach(i=>{const e=$(i);o[i]=e.type==='checkbox'?e.checked:e.value});o.model=$('model').value;o.models=[...$('model').options].map(x=>x.value);o.chars=chars;localStorage.ovoCfg=JSON.stringify(o)}
 function loadCfg(){try{const o=JSON.parse(localStorage.ovoCfg||'{}');if(o.models&&o.models.length)fillModels(o.models);CFG_IDS.forEach(i=>{if(o[i]===undefined)return;const e=$(i);e.type==='checkbox'?e.checked=o[i]:e.value=o[i]});if(o.model)$('model').value=o.model;if(o.chars)chars=o.chars}catch(e){}}
 function fillModels(list){const s=$('model');s.innerHTML='';list.forEach(m=>{const o=document.createElement('option');o.value=o.textContent=m;s.appendChild(o)});$('mcount').textContent=list.length+'个'}
@@ -413,7 +415,9 @@ const UC={0:'nsfw, lowres, artistic error, film grain, scan artifacts, worst qua
 function ver(m){m=m.toLowerCase();return /4-5|4\.5/.test(m)?'v45':/-4|v4/.test(m)?'v4':'v3'}
 function buildParams(seed){
   const m=model(),v=ver(m),isV4=v!=='v3';
-  let prompt=$('prompt').value.trim();
+  const artist = $('artistPrompt').value.trim();
+let prompt = $('prompt').value.trim();
+if (artist) prompt = artist + (prompt ? ', ' + prompt : '');
 
 // ★ OpenAI 中转模式下：把角色提示词拼进主 prompt
 if($('apiMode').value==='openai'){
