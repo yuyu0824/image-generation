@@ -488,8 +488,25 @@ const QUALITY={v45:', very aesthetic, masterpiece, no text',v4:', no text, best 
 const UC={0:'nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page',1:'nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page',2:'nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy',3:''};
 function ver(m){m=m.toLowerCase();return /4-5|4\.5/.test(m)?'v45':/-4|v4/.test(m)?'v4':'v3'}
 function buildParams(seed){
-  const m=model(),v=ver(m),isV4=v!=='v3';
-  const _art=$('artistStr').value.trim().replace(/,+$/,'');let prompt=$('prompt').value.trim();if(_art)prompt=prompt?_art+', '+prompt:_art;if($('qualityToggle').checked)prompt+=QUALITY[v];
+ const m=model(),v=ver(m),isV4=v!=='v3';
+ const _art=$('artistStr').value.trim().replace(/,+$/,'');let prompt=$('prompt').value.trim();
+
+// ★ 提前提取角色提示词（仅限 OpenAI 模式）
+let charText='';
+if($('apiMode').value === 'openai' || $('apiMode').value === 'chat'){
+  const charList=chars.filter(c=>c.enabled!==false && c.p && c.p.trim());
+  if(charList.length) charText=charList.map(c=>c.p.trim()).join(', ');
+}
+
+// ★ 完美顺序拼接：画师串 -> 角色词 -> 正向提示词
+let baseParts=[];
+if(_art) baseParts.push(_art);
+if(charText) baseParts.push(charText);
+if(prompt) baseParts.push(prompt);
+prompt = baseParts.join(', ');
+
+// 最后加上质量词
+if($('qualityToggle').checked)prompt+=QUALITY[v];
   let neg=$('negative').value.trim();const ucp=UC[$('ucPreset').value];if(ucp)neg=neg?ucp+', '+neg:ucp;
   const p={params_version:3,width:+$('width').value,height:+$('height').value,scale:+$('scale').value,sampler:$('sampler').value,steps:+$('steps').value,n_samples:+$('nSamples').value,
     ucPreset:+$('ucPreset').value,qualityToggle:$('qualityToggle').checked,dynamic_thresholding:$('decrisp').checked,controlnet_strength:1,legacy:false,add_original_image:true,
@@ -508,15 +525,7 @@ function buildParams(seed){
   let action='generate',mdl=m;
   if(i2i){p.image=b64(i2i);p.strength=+$('strength').value;p.noise=+$('noise').value;p.extra_noise_seed=seed;action='img2img';
     if(mask){p.mask=b64(mask);action='infill';if(!/inpainting/.test(mdl))mdl=mdl+'-inpainting';delete p.strength;delete p.noise}}
-  // ★ 修复：在 OpenAI 或 Chat 模式下，把角色框拼进发给服务器的 input
-let finalInput = prompt;
-if($('apiMode').value === 'openai' || $('apiMode').value === 'chat'){
-  const charList=chars.filter(c=>c.enabled!==false && c.p && c.p.trim());
-  if(charList.length){
-    finalInput += (finalInput ? ', ' : '') + charList.map(c=>c.p.trim()).join(', ');
-  }
-}
-return {input:finalInput, model:mdl, action, parameters:p};
+return {input:prompt, model:mdl, action, parameters:p};
 }
 
 /* ---------- generate ---------- */
