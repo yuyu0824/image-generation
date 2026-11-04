@@ -30,6 +30,12 @@ header p{font-family:"Cormorant Garamond",serif;letter-spacing:.3em;font-size:11
 .bar{background:var(--title);padding:6px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--pink2);font-size:13px;font-weight:700;color:var(--rose)}
 .bar .dots{margin-left:auto;display:flex;gap:4px}
 .bar .dots i{width:14px;height:14px;border:1px solid var(--pink2);background:#fff;border-radius:3px;display:block}
+.bar{cursor:pointer;user-select:none;transition:background .2s}
+.bar:hover{background:linear-gradient(180deg,#f8e5eb,#f0ccd7)}
+.bar::after{content:'▼';margin-left:10px;font-size:10px;color:var(--rose);opacity:.6;transition:transform .3s}
+.win.collapsed .bar::after{transform:rotate(-90deg)}
+.win.collapsed .bar{border-bottom:none}
+.win.collapsed .body{display:none}
 .body{padding:12px}
 label{display:block;font-size:12px;color:var(--ink2);margin:10px 0 4px;font-weight:500}
 label:first-child{margin-top:0}
@@ -331,7 +337,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><img id="modalImg"></div>
 
-<input type="file" id="fileIn" accept="image/*" hidden>
+<input type="file" id="fileIn" accept="image/*,.json,.naiv4vibe" hidden>
 <input type="file" id="restoreIn" accept="application/json,.json" hidden>
 
 <script>
@@ -480,7 +486,64 @@ function renderImgs(){
 }
 bindDrop('i2iDrop',d=>{i2i=d;renderImgs()});
 bindDrop('maskDrop',d=>{mask=d;renderImgs()});
-bindDrop('vibeDrop',d=>{vibes.push({src:d,s:0.6,ie:1});renderImgs()},true);
+// 处理 Vibe 上传（支持普通图片、纯特征码 JSON、带原图 JSON）
+bindDrop('vibeDrop', async (data) => {
+  if (typeof data === 'string' && data.startsWith('data:image')) {
+    vibes.push({ src: data, s: 0.6, ie: 1 });
+    renderImgs();
+    return;
+  }
+  
+  if (typeof data === 'string') {
+    try {
+      const base64Content = data.split(',')[1];
+      const jsonStr = decodeURIComponent(escape(atob(base64Content))); // 防止中文乱码
+      const json = JSON.parse(jsonStr);
+      let extractedCount = 0;
+      const placeholderImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      
+      // 格式 A：纯特征码
+      if (json.encodings) {
+        const firstKey = Object.keys(json.encodings)[0];
+        const subKey = Object.keys(json.encodings[firstKey])[0];
+        const encodingStr = json.encodings[firstKey][subKey]?.encoding;
+        if (encodingStr) {
+          vibes.push({ src: placeholderImg, data: encodingStr, s: 0.6, ie: 1 });
+          extractedCount++;
+        }
+      }
+      
+      // 格式 B：带原图或特征码组
+      if (json.vibeData) {
+        Object.keys(json.vibeData).forEach(key => {
+          const item = json.vibeData[key];
+          if (item.type === 'image' && item.image) {
+            vibes.push({ src: 'data:image/png;base64,' + item.image, s: 0.6, ie: 1 });
+            extractedCount++;
+          } else if (item.type === 'encoding' && item.encoding) {
+            vibes.push({ src: placeholderImg, data: item.encoding, s: 0.6, ie: 1 });
+            extractedCount++;
+          }
+        });
+      }
+      
+      if (extractedCount > 0) {
+        renderImgs();
+        toast(`✅ 成功解析 ${extractedCount} 个 Vibe`);
+      } else {
+        toast('❌ 未在文件中找到可用数据');
+      }
+    } catch (e) {
+      toast('❌ 解析失败：这可能是一个真正的二进制文件');
+    }
+    return;
+  }
+
+  if (data instanceof File) {
+    const src = await readFile(data);
+    bindDrop('vibeDrop', src);
+  }
+}, true);
 bindDrop('crDrop',d=>{crefs=[d];renderImgs()});
 
 /* ---------- build NovelAI params ---------- */
@@ -519,7 +582,11 @@ if($('qualityToggle').checked)prompt+=QUALITY[v];
     p.v4_negative_prompt={caption:{base_caption:neg,char_captions:cc.map(c=>({char_caption:c.n||'',centers:[{x:c.x??.5,y:c.y??.5}]}))},legacy_uc:false};
     p.characterPrompts=cc.map(c=>({prompt:c.p,uc:c.n||'',center:{x:c.x??.5,y:c.y??.5},enabled:true}));
   }
-  if(vibes.length){p.reference_image_multiple=vibes.map(x=>b64(x.src));p.reference_strength_multiple=vibes.map(x=>x.s);p.reference_information_extracted_multiple=vibes.map(x=>x.ie)}
+  if(vibes.length){
+  p.reference_image_multiple=vibes.map(x=> x.data ? x.data : b64(x.src));
+  p.reference_strength_multiple=vibes.map(x=>x.s);
+  p.reference_information_extracted_multiple=vibes.map(x=>x.ie);
+  }
   if(crefs.length){p.director_reference_images=crefs.map(b64);p.director_reference_descriptions=crefs.map(()=>({caption:{base_caption:$('crStyle').checked?'character&style':'character',char_captions:[]},legacy_uc:false}));
     p.director_reference_information_extracted=crefs.map(()=>1);p.director_reference_strength_values=crefs.map(()=>+$('crStrength').value);p.director_reference_secondary_strength_values=crefs.map(()=>1-+$('crFidelity').value)}
   let action='generate',mdl=m;
@@ -811,6 +878,27 @@ $('restoreBtn').onclick=()=>{const fi=$('restoreIn');fi.value='';fi.onchange=asy
 };fi.click()};
 
 loadCfg();renderPresets();renderChars();renderImgs();renderArtists();
+/* ---------- 面板折叠功能 ---------- */
+document.querySelectorAll('.win').forEach((win, idx) => {
+  const bar = win.querySelector('.bar');
+  if (!bar) return;
+  
+  // 用标题文字作为唯一标识（去掉特殊符号和空格）
+  const title = bar.textContent.replace(/[♡\s]/g, '').trim();
+  if (!title) return;
+  const key = 'ovoCollapse_' + title;
+  
+  // 恢复上次的折叠状态
+  if (localStorage.getItem(key) === 'true') {
+    win.classList.add('collapsed');
+  }
+  
+  // 点击标题栏时切换折叠状态
+  bar.onclick = () => {
+    win.classList.toggle('collapsed');
+    localStorage.setItem(key, win.classList.contains('collapsed'));
+  };
+});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
 </script>
 </body>
