@@ -101,6 +101,12 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 .chip{border:1px solid var(--pink2);background:#fff;color:var(--rose);border-radius:16px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:700}
 .chip:hover{background:var(--pink);color:#fff}
 .chip .del{color:var(--ink2);margin-left:6px;font-weight:400}
+/* 灵感库卡片样式 */
+.lib-card{position:relative;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:pointer;transition:transform .2s;display:flex;flex-direction:column}
+.lib-card:hover{transform:translateY(-2px);border-color:var(--pink2);box-shadow:var(--shadow)}
+.lib-card img{width:100%;aspect-ratio:3/4;object-fit:cover;background:#f9f9f9;display:block}
+.lib-card .info{padding:6px;font-size:12px;font-weight:700;color:var(--rose);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.lib-card .del-btn{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(201,121,143,.8);color:#fff;border:0;border-radius:50%;font-size:14px;line-height:22px;text-align:center;z-index:2;cursor:pointer}
 </style>
 </head>
 <body>
@@ -110,7 +116,11 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   <p>♡ ovo novelai 生图 · dreamy image studio ♡</p>
 </header>
 
-<div class="nav"><button class="btn navb on" data-v="viewGen">♡ 生图</button><button class="btn navb" data-v="viewInfo">✧ 图片解析工作台</button></div>
+<div class="nav">
+  <button class="btn navb on" data-v="viewGen">♡ 生图</button>
+  <button class="btn navb" data-v="viewInfo">✧ 图片解析</button>
+  <button class="btn navb" data-v="viewLib">✧ 灵感收藏</button>
+</div>
 <div class="wrap" id="viewGen">
 <!-- LEFT -->
 <div>
@@ -331,6 +341,49 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 <div>
   <div class="win"><div class="bar">♡ metadata.json<span class="dots"><i></i><i></i><i></i></span></div>
   <div class="body" id="infoOut"><div class="hint">上传后在此显示正向、反向、种子、步数、采样器等全部数据。</div></div></div>
+</div>
+</div>
+<div class="wrap" id="viewLib" style="display:none">
+<!-- 左边：添加表单 -->
+<div>
+  <div class="win">
+    <div class="bar">♡ add.collection<span class="dots"><i></i><i></i><i></i></span></div>
+    <div class="body">
+      <div class="drop" id="libImgDrop" style="padding:20px;text-align:center;margin-bottom:10px">
+        <img id="libImgPreview" style="max-width:100%;max-height:150px;display:none;margin:0 auto 10px;border-radius:6px">
+        <div id="libImgText">点击上传封面缩略图（可选）</div>
+      </div>
+      <label>名称 (备注)</label>
+      <input id="libName" placeholder="比如：赛博朋克风 / 某张神图的参数">
+      <label>画师串</label>
+      <textarea id="libArtist" rows="2" placeholder="artist:xxx, ..."></textarea>
+      <label>正向提示词</label>
+      <textarea id="libPrompt" rows="3" placeholder="1girl, ..."></textarea>
+      <label>反向提示词</label>
+      <textarea id="libNeg" rows="2" placeholder="lowres, ..."></textarea>
+      <button class="btn main" id="libSaveBtn" style="margin-top:15px">💾 保存到灵感库</button>
+    </div>
+  </div>
+</div>
+<!-- 右边：展示网格 -->
+<div>
+<div class="win">
+  <div class="bar">♡ my.collections<span class="dots"><i></i><i></i><i></i></span></div>
+  <div class="body">
+    <div class="hint" style="margin-bottom:10px">点击卡片可以直接套用到生图页，点右上角 × 删除。</div>
+    
+    <!-- 👇 新加的勾选栏 👇 -->
+    <div style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;background:#fbf3f5;padding:8px;border-radius:6px;border:1px dashed var(--pink2)">
+      <span style="color:var(--rose);font-weight:700">点击时覆盖：</span>
+      <label class="chk" style="margin:0"><input type="checkbox" id="libApplyArtist" checked> 画师串</label>
+      <label class="chk" style="margin:0"><input type="checkbox" id="libApplyPrompt" checked> 正向词</label>
+      <label class="chk" style="margin:0"><input type="checkbox" id="libApplyNeg" checked> 反向词</label>
+    </div>
+    <!-- 👆 新加的勾选栏 👆 -->
+
+    <div class="gallery" id="libGallery" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));"></div>
+  </div>
+</div>
 </div>
 </div>
 <footer>— THE STRONGER THE WIND, THE STRONGER THE BUTTERFLIES — <br>© OVONovelAI生图 ♡</footer>
@@ -728,7 +781,7 @@ $('clearHist').onclick=()=>{if(confirm('确定清空全部历史？'))db.transac
 
 
 /* ---------- nav / seed ---------- */
-document.querySelectorAll('.navb').forEach(b=>b.onclick=()=>{document.querySelectorAll('.navb').forEach(x=>x.classList.remove('on'));b.classList.add('on');['viewGen','viewInfo'].forEach(v=>$(v).style.display=v===b.dataset.v?'':'none')});
+document.querySelectorAll('.navb').forEach(b=>b.onclick=()=>{document.querySelectorAll('.navb').forEach(x=>x.classList.remove('on'));b.classList.add('on');['viewGen','viewInfo','viewLib'].forEach(v=>$(v).style.display=v===b.dataset.v?'':'none')});
 $('randSeed').onclick=()=>{$('seed').value=Math.floor(Math.random()*4294967295);toast('已随机种子 '+$('seed').value)};
 
 /* ---------- strip metadata (PNG无损重编码，清除文本块与Alpha隐写) ---------- */
@@ -859,7 +912,7 @@ function dbAll(){return new Promise(r=>{if(!db)return r([]);db.transaction('h').
 $('backupBtn').onclick=async()=>{
   toast('正在打包备份…');
   const hist=await dbAll();
-  const data={app:'OVONovelAI',ver:3,time:new Date().toISOString(),cfg:JSON.parse(localStorage.ovoCfg||'{}'),artists,history:hist,artistStr:localStorage.ovoArtist||''};
+  const data={app:'OVONovelAI',ver:3,time:new Date().toISOString(),cfg:JSON.parse(localStorage.ovoCfg||'{}'),artists,history:hist,artistStr:localStorage.ovoArtist||'',libData:libData};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='OVO_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
   toast('备份已导出（'+hist.length+' 张历史）♡');
@@ -871,7 +924,7 @@ $('restoreBtn').onclick=()=>{const fi=$('restoreIn');fi.value='';fi.onchange=asy
     if(data.app!=='OVONovelAI'&&!confirm('不像本站的备份文件，仍要导入吗？'))return;
     if(data.cfg)localStorage.ovoCfg=JSON.stringify(data.cfg);
     if(data.artists){artists=data.artists;saveArtists();renderArtists()}
-    if(data.artistStr!==undefined){localStorage.ovoArtist=data.artistStr;if($('artistStr'))$('artistStr').value=data.artistStr;}
+    if(data.libData){libData=data.libData;localStorage.ovoLib=JSON.stringify(libData);renderLib()}
     if(data.history&&db){const st=db.transaction('h','readwrite').objectStore('h');st.clear();data.history.forEach(h=>{delete h.id;st.add(h)});await new Promise(r=>st.transaction.oncomplete=r);renderHist()}
     loadCfg();renderChars();toast('备份已恢复 ♡');
   }catch(e){toast('导入失败：'+e.message,4000)}
@@ -900,6 +953,143 @@ document.querySelectorAll('.win').forEach((win, idx) => {
   };
 });
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
+/* ---------- 灵感收藏库系统 ---------- */
+let libData = [];
+try { libData = JSON.parse(localStorage.ovoLib || '[]'); } catch(e) {}
+
+let currentLibImgBase64 = null;
+
+// 图片压缩逻辑（防止撑爆手机内存）
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 400; // 最大宽度400px足够了
+        let w = img.width, h = img.height;
+        if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 压缩质量 0.7
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// 处理图片上传
+$('libImgDrop').onclick = () => {
+  const fi = document.createElement('input');
+  fi.type = 'file'; fi.accept = 'image/*';
+  fi.onchange = async () => {
+    if(fi.files[0]) {
+      currentLibImgBase64 = await compressImage(fi.files[0]);
+      $('libImgPreview').src = currentLibImgBase64;
+      $('libImgPreview').style.display = 'block';
+      $('libImgText').textContent = '点击可更换图片';
+    }
+  };
+  fi.click();
+};
+
+// 渲染灵感库列表
+function renderLib() {
+  const box = $('libGallery');
+  box.innerHTML = '';
+  if(libData.length === 0) {
+    box.innerHTML = '<div class="hint" style="grid-column:1/-1;text-align:center;padding:20px">还没有收藏，快去添加吧 ♡</div>';
+    return;
+  }
+  
+  libData.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'lib-card';
+    
+    // 如果没有图，用一个默认占位色
+    const imgSrc = item.img || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="#f4e6ea"/><text x="150" y="200" font-size="20" fill="#c9798f" text-anchor="middle" font-family="sans-serif">No Cover</text></svg>');
+    
+    div.innerHTML = `
+      <button class="del-btn">×</button>
+      <img src="${imgSrc}" loading="lazy">
+      <div class="info">${item.name || '未命名收藏'}</div>
+    `;
+    
+    // 点击套用
+div.onclick = (e) => {
+  if(e.target.classList.contains('del-btn')) return;
+  
+  // 读取勾选状态
+  const applyArtist = document.getElementById('libApplyArtist').checked;
+  const applyPrompt = document.getElementById('libApplyPrompt').checked;
+  const applyNeg = document.getElementById('libApplyNeg').checked;
+
+  if(applyArtist && item.artist !== undefined) $('artistStr').value = item.artist;
+  if(applyPrompt && item.prompt !== undefined) $('prompt').value = item.prompt;
+  if(applyNeg && item.neg !== undefined) $('negative').value = item.neg;
+  
+  // 触发保存
+  $('artistStr').dispatchEvent(new Event('input'));
+  saveCfg();
+  
+  // 跳转回生图页
+  document.querySelector('[data-v="viewGen"]').click();
+  toast('✅ 已按你的选择套用灵感');
+};
+    
+    // 点击删除
+    div.querySelector('.del-btn').onclick = (e) => {
+      e.stopPropagation();
+      if(confirm(`确定删除「${item.name}」吗？`)) {
+        libData.splice(index, 1);
+        localStorage.ovoLib = JSON.stringify(libData);
+        renderLib();
+      }
+    };
+    
+    box.appendChild(div);
+  });
+}
+
+// 保存到灵感库
+$('libSaveBtn').onclick = () => {
+  const name = $('libName').value.trim();
+  const artist = $('libArtist').value.trim();
+  const prompt = $('prompt').value.trim(); // 如果你没填，也可以一键把生图页的带过来
+  const libPromptVal = $('libPrompt').value.trim() || prompt; // 智能回退
+  const neg = $('libNeg').value.trim() || $('negative').value.trim();
+
+  if(!name && !artist && !libPromptVal) return toast('写点内容再保存吧~');
+
+  libData.unshift({
+    name: name || '未命名收藏',
+    artist: artist,
+    prompt: libPromptVal,
+    neg: neg,
+    img: currentLibImgBase64,
+    time: Date.now()
+  });
+  
+  localStorage.ovoLib = JSON.stringify(libData);
+  
+  // 清空表单
+  $('libName').value = '';
+  $('libArtist').value = '';
+  $('libPrompt').value = '';
+  $('libNeg').value = '';
+  currentLibImgBase64 = null;
+  $('libImgPreview').style.display = 'none';
+  $('libImgText').textContent = '点击上传封面缩略图（可选）';
+  
+  renderLib();
+  toast('✅ 已保存到灵感库');
+};
+
+// 初始化渲染
+renderLib();
 </script>
 </body>
 </html>
