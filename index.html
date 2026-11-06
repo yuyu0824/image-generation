@@ -107,6 +107,20 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 .lib-card img{width:100%;aspect-ratio:3/4;object-fit:cover;background:#f9f9f9;display:block}
 .lib-card .info{padding:6px;font-size:12px;font-weight:700;color:var(--rose);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
 .lib-card .del-btn{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(201,121,143,.8);color:#fff;border:0;border-radius:50%;font-size:14px;line-height:22px;text-align:center;z-index:2;cursor:pointer}
+/* 生图页动作按钮的网格布局 */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 一行 4 个 */
+  gap: 6px;
+  margin-top: 12px;
+}
+.action-grid .btn {
+  border-radius: 8px; /* 改用微圆角，比大圆角更整齐 */
+  padding: 6px 0;     /* 上下留白，左右自适应 */
+  text-align: center;
+  justify-content: center;
+  font-size: 13px;
+}
 </style>
 </head>
 <body>
@@ -118,8 +132,8 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 
 <div class="nav">
   <button class="btn navb on" data-v="viewGen">♡ 生图</button>
-  <button class="btn navb" data-v="viewInfo">✧ 图片解析</button>
-  <button class="btn navb" data-v="viewLib">✧ 灵感收藏</button>
+  <button class="btn navb" data-v="viewInfo">✧ 解析</button>
+  <button class="btn navb" data-v="viewLib">✧ 收藏</button>
 </div>
 <div class="wrap" id="viewGen">
 <!-- LEFT -->
@@ -284,14 +298,15 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
     <div class="body">
       <div class="stage" id="stage"><div class="empty"><b>welcome</b>写下咒语，点一下生成吧 ♡</div></div>
       <div class="results" id="results"></div>
-      <div class="flex" style="margin-top:10px;flex-wrap:wrap">
-        <button class="btn sm" id="dl">⇩ 下载</button>
-        <button class="btn sm" id="toI2i">↺ 作为底图</button>
-        <button class="btn sm" id="toVibe">✧ 作为参考图</button>
-        <button class="btn sm" id="reuseSeed">◎ 复用种子</button>
-        <button class="btn sm" id="dlClean">✂ 去除元数据下载</button>
-        <button class="btn sm" id="toInfo">✧ 解析此图</button>
-      </div>
+      <div class="action-grid">
+  <button class="btn sm" id="dl">⇩ 下载</button>
+  <button class="btn sm" id="dlClean">✂ 净图</button>
+  <button class="btn sm" id="toI2i">↺ 底图</button>
+  <button class="btn sm" id="toVibe">✧ 参考</button>
+  <button class="btn sm" id="reuseSeed">◎ 种子</button>
+  <button class="btn sm" id="toInfo">✧ 解析</button>
+  <button class="btn sm" id="saveToLibBtn">♡ 收藏</button>
+    </div>
     </div>
     <div class="status"><span id="stTxt">done</span><span id="stSeed">seed: -</span></div>
   </div>
@@ -1090,6 +1105,59 @@ $('libSaveBtn').onclick = () => {
 
 // 初始化渲染
 renderLib();
+  /* ---------- 一键收藏当前图到灵感库 ---------- */
+function compressBase64(base64Str) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxSize = 400; // 压缩到 400px，防止撑爆内存
+      let w = img.width, h = img.height;
+      if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = base64Str;
+  });
+}
+
+$('saveToLibBtn').onclick = async () => {
+  if (!current || !current[curIdx]) return toast('当前没有图片可以收藏');
+  
+  // 弹窗让用户起个名字，默认用种子号
+  const name = prompt('给这张图起个名字（方便以后找）:', '神图_' + (lastSeed || Date.now()));
+  if (name === null) return; // 用户点了取消
+  
+  toast('正在生成缩略图并收藏...');
+  
+  try {
+    // 压缩当前预览图
+    const thumb = await compressBase64(current[curIdx]);
+    
+    // 自动抓取当前生图页面的画师、正向、反向
+    const artist = $('artistStr').value.trim();
+    const p = $('prompt').value.trim();
+    const n = $('negative').value.trim();
+    
+    // 存入灵感库
+    libData.unshift({
+      name: name || ('神图_' + Date.now()),
+      artist: artist,
+      prompt: p,
+      neg: n,
+      img: thumb,
+      time: Date.now()
+    });
+    
+    localStorage.ovoLib = JSON.stringify(libData);
+    renderLib(); // 刷新灵感库列表
+    toast('✅ 成功收藏到灵感库！');
+  } catch(e) {
+    toast('❌ 收藏失败：' + e.message);
+  }
+};
 </script>
 </body>
 </html>
