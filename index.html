@@ -412,6 +412,9 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 <script>
 const $=id=>document.getElementById(id);
 const toast=(m,t=2600)=>{const e=$('toast');e.textContent=m;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',t)};
+/* ---------- 灵感收藏库系统 ---------- */
+let libData = [];
+try { libData = JSON.parse(localStorage.ovoLib || '[]'); } catch(e) {}
 
 /* ---------- PWA ---------- */
 (function(){
@@ -545,7 +548,7 @@ let i2i=null,mask=null,vibes=[],crefs=[];
 const readFile=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
 const b64=d=>d.split(',')[1];
 function pick(cb,multi){const fi=$('fileIn');fi.multiple=!!multi;fi.value='';fi.onchange=async()=>{for(const f of fi.files)cb(await readFile(f))};fi.click()}
-function bindDrop(id,cb,multi){const d=$(id);d.onclick=()=>pick(cb,multi);d.ondragover=e=>{e.preventDefault()};d.ondrop=async e=>{e.preventDefault();for(const f of e.dataTransfer.files)if(f.type.startsWith('image'))cb(await readFile(f))}}
+function bindDrop(id,cb,multi){const d=$(id);d.onclick=()=>pick(cb,multi);d.ondragover=e=>{e.preventDefault()};d.ondrop=async e=>{e.preventDefault();for(const f of e.dataTransfer.files)if(f.type.startsWith('image')||f.name.endsWith('.json')||f.name.endsWith('.naiv4vibe'))cb(await readFile(f))}}
 function thumb(src,onx,extra=''){const t=document.createElement('div');t.className='thumb';t.innerHTML=`<img src="${src}"><button class="x">×</button>${extra}`;t.querySelector('.x').onclick=onx;return t}
 function renderImgs(){
   $('i2iThumb').innerHTML='';if(i2i)$('i2iThumb').appendChild(thumb(i2i,()=>{i2i=null;renderImgs()}));
@@ -872,29 +875,23 @@ $('infoApply').onclick=()=>{
   // 1. 获取完整的正向提示词
   let fullPrompt = c.v4_prompt?.caption?.base_caption || c.prompt || infoData.pngText.Description || '';
   
-  // 2. 智能提取画师串特征并分离
-  const artistRegex = /(?:^|,\s*)([0-9.]+\s*::\s*artist\s*:[^,]+::?|[0-9.]+\s*::\s*artist\s*:[^,]+)/gi;
-  let artistMatches = [];
-  let match;
-  while ((match = artistRegex.exec(fullPrompt)) !== null) {
-    artistMatches.push(match[0].replace(/^,\s*/, ''));
-  }
-  
-  if (artistMatches.length > 0) {
-    const artistStr = artistMatches.join(', ');
-    let remainder = fullPrompt;
-    artistMatches.forEach(m => { remainder = remainder.replace(m, ''); });
-    remainder = remainder.replace(/^[\s,]+/, '').trim();
-    
-    // ⚠️ 注意：作者最新版的画师串输入框 id 是 artistStr（如果是旧版可能是 artistPrompt，这里统一用 artistStr）
-    if($('artistStr')) set('artistStr', artistStr);
-    else if($('artistPrompt')) set('artistPrompt', artistStr);
-    
-    set('prompt', remainder);       // 剩下的纯画面词填正向框
-  } else {
-    // 没检测到特殊画师串，全塞进正向
-    set('prompt', fullPrompt);
-  }
+// 2. 智能分离画师串（按逗号劈开归类法）
+const tags = fullPrompt.split(/[,，\n]+/).map(t => t.trim()).filter(Boolean);
+const artistArr = [], promptArr = [];
+tags.forEach(tag => {
+  if (/artist\s*:/i.test(tag)) artistArr.push(tag);
+  else promptArr.push(tag);
+});
+const artistStr = artistArr.join(', ');
+const remainder = promptArr.join(', ');
+
+if (artistStr) {
+  if($('artistStr')) set('artistStr', artistStr);
+  else if($('artistPrompt')) set('artistPrompt', artistStr);
+  set('prompt', remainder);       // 剩下的纯画面词填正向框
+} else {
+  set('prompt', fullPrompt);
+}
 
   // 3. 填回其他参数
   set('negative',c.v4_negative_prompt?.caption?.base_caption||c.uc);
@@ -969,9 +966,6 @@ document.querySelectorAll('.win').forEach((win, idx) => {
   };
 });
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
-/* ---------- 灵感收藏库系统 ---------- */
-let libData = [];
-try { libData = JSON.parse(localStorage.ovoLib || '[]'); } catch(e) {}
 
 let currentLibImgBase64 = null;
 
@@ -1133,23 +1127,18 @@ async function getMetaFromImg(imgSrc) {
     
     if (comment) {
        let fullPrompt = comment.v4_prompt?.caption?.base_caption || comment.prompt || chunks.Description || '';
-       // 解析画师串
-       let artistStr = '';
-       let remainder = fullPrompt;
-       const artistRegex = /(?:^|,\s*)([0-9.]+\s*::\s*artist\s*:[^,]+::?|[0-9.]+\s*::\s*artist\s*:[^,]+)/gi;
-       let artistMatches = [];
-       let match;
-       while ((match = artistRegex.exec(fullPrompt)) !== null) {
-         artistMatches.push(match[0].replace(/^,\s*/, ''));
-       }
-       if (artistMatches.length > 0) {
-         artistStr = artistMatches.join(', ');
-         artistMatches.forEach(m => { remainder = remainder.replace(m, ''); });
-         remainder = remainder.replace(/^[\s,]+/, '').trim();
-       }
-       
-       const neg = comment.v4_negative_prompt?.caption?.base_caption || comment.uc || '';
-       return { artist: artistStr, prompt: remainder, neg: neg };
+// 按逗号劈开归类法
+const tags = fullPrompt.split(/[,，\n]+/).map(t => t.trim()).filter(Boolean);
+const artistArr = [], promptArr = [];
+tags.forEach(tag => {
+  if (/artist\s*:/i.test(tag)) artistArr.push(tag);
+  else promptArr.push(tag);
+});
+const artistStr = artistArr.join(', ');
+const remainder = promptArr.join(', ');
+
+const neg = comment.v4_negative_prompt?.caption?.base_caption || comment.uc || '';
+return { artist: artistStr, prompt: remainder, neg: neg };
     }
   } catch(e) {
     console.error('提取元数据失败', e);
@@ -1164,7 +1153,7 @@ $('saveToLibBtn').onclick = async () => {
   const name = prompt('给这张图起个名字（方便以后找）:', 'OVO_' + (lastSeed || Date.now()));
   if (name === null) return; 
   
-  toast('正在提取图片内置参数并收藏...');
+  toast('正在处理收藏...');
   
   try {
     // 1. 压缩当前预览图作为封面
@@ -1173,10 +1162,16 @@ $('saveToLibBtn').onclick = async () => {
     // 2. 尝试从图片底层提取它生成时的真实参数
     const meta = await getMetaFromImg(current[curIdx]);
     
-    // 3. 如果图片里解出来了，就用解出来的；如果没有（比如被去除了数据），再用当前输入框的
-    const artist = meta ? meta.artist : $('artistStr').value.trim();
-    const p = meta ? meta.prompt : $('prompt').value.trim();
-    const n = meta ? meta.neg : $('negative').value.trim();
+    // ★ 核心修改：如果图片里解出了数据，问一下你用哪个
+    let useMeta = false;
+    if (meta) {
+      useMeta = confirm('检测到该图包含底层内置参数。\n\n点击【确定】：使用图片原本的参数。\n点击【取消】：使用当前生图页面输入框里的内容。');
+    }
+    
+    // 3. 根据你的选择来赋值
+    const artist = useMeta ? meta.artist : $('artistStr').value.trim();
+    const p = useMeta ? meta.prompt : $('prompt').value.trim();
+    const n = useMeta ? meta.neg : $('negative').value.trim();
     
     // 存入灵感库
     libData.unshift({
@@ -1190,7 +1185,7 @@ $('saveToLibBtn').onclick = async () => {
     
     localStorage.ovoLib = JSON.stringify(libData);
     renderLib(); 
-    toast('✅ 成功提取该图的真实参数并收藏！');
+    toast(useMeta ? '✅ 已保存图片内置参数！' : '✅ 已保存当前页面填写的参数！');
   } catch(e) {
     toast('❌ 收藏失败：' + e.message);
   }
@@ -1213,23 +1208,17 @@ $('infoSaveToLib').onclick = async () => {
     // 2. 直接利用已经解析好的 c 数据
     let fullPrompt = c.v4_prompt?.caption?.base_caption || c.prompt || infoData.pngText.Description || '';
     
-    // 3. 智能分离画师串
-    const artistRegex = /(?:^|,\s*)([0-9.]+\s*::\s*artist\s*:[^,]+::?|[0-9.]+\s*::\s*artist\s*:[^,]+)/gi;
-    let artistMatches = [];
-    let match;
-    while ((match = artistRegex.exec(fullPrompt)) !== null) {
-      artistMatches.push(match[0].replace(/^,\s*/, ''));
-    }
-    
-    let artistStr = '';
-    let remainder = fullPrompt;
-    if (artistMatches.length > 0) {
-      artistStr = artistMatches.join(', ');
-      artistMatches.forEach(m => { remainder = remainder.replace(m, ''); });
-      remainder = remainder.replace(/^[\s,]+/, '').trim();
-    }
-    
-    const neg = c.v4_negative_prompt?.caption?.base_caption || c.uc || '';
+// 3. 智能分离画师串（按逗号劈开归类法，最稳妥）
+const tags = fullPrompt.split(/[,，\n]+/).map(t => t.trim()).filter(Boolean);
+const artistArr = [], promptArr = [];
+tags.forEach(tag => {
+  if (/artist\s*:/i.test(tag)) artistArr.push(tag);
+  else promptArr.push(tag);
+});
+const artistStr = artistArr.join(', ');
+const remainder = promptArr.join(', ');
+
+const neg = c.v4_negative_prompt?.caption?.base_caption || c.uc || '';
     
     // 4. 存入灵感库
     libData.unshift({
