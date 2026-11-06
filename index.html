@@ -347,10 +347,11 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
     <div class="drop" id="infoDrop" style="padding:30px">点击或拖拽上传图片，解析全部原始数据<br>（PNG 文本块 + NovelAI 隐写 Alpha 数据 + EXIF 文本）</div>
     <div class="stage" id="infoStage" style="min-height:260px;margin-top:10px"><div class="empty"><b>inspect</b>等待图片 ♡</div></div>
     <div class="flex" style="margin-top:10px;flex-wrap:wrap">
-      <button class="btn sm" id="infoClean">✂ 去除元数据下载</button>
-      <button class="btn sm" id="infoApply">↺ 套用参数到生图</button>
-      <button class="btn sm" id="infoCopy">⧉ 复制全部 JSON</button>
-    </div>
+  <button class="btn sm" id="infoClean">✂ 去除元数据下载</button>
+  <button class="btn sm" id="infoApply">↺ 套用参数到生图</button>
+  <button class="btn sm" id="infoSaveToLib">♡ 收藏该图</button>
+  <button class="btn sm" id="infoCopy">⧉ 复制全部 JSON</button>
+</div>
   </div></div>
 </div>
 <div>
@@ -1190,6 +1191,59 @@ $('saveToLibBtn').onclick = async () => {
     localStorage.ovoLib = JSON.stringify(libData);
     renderLib(); 
     toast('✅ 成功提取该图的真实参数并收藏！');
+  } catch(e) {
+    toast('❌ 收藏失败：' + e.message);
+  }
+};
+  /* ---------- 解析页一键收藏到灵感库 ---------- */
+$('infoSaveToLib').onclick = async () => {
+  if (!infoSrc) return toast('没有图片可以收藏');
+  const c = infoData?.parsed;
+  if (!c) return toast('没有解析到参数，无法收藏');
+  
+  const name = prompt('给这张图起个名字（方便以后找）:', '解析收藏_' + Date.now());
+  if (name === null) return; // 用户点了取消
+  
+  toast('正在生成缩略图并收藏...');
+  
+  try {
+    // 1. 压缩当前解析的图片
+    const thumb = await compressBase64(infoSrc);
+    
+    // 2. 直接利用已经解析好的 c 数据
+    let fullPrompt = c.v4_prompt?.caption?.base_caption || c.prompt || infoData.pngText.Description || '';
+    
+    // 3. 智能分离画师串
+    const artistRegex = /(?:^|,\s*)([0-9.]+\s*::\s*artist\s*:[^,]+::?|[0-9.]+\s*::\s*artist\s*:[^,]+)/gi;
+    let artistMatches = [];
+    let match;
+    while ((match = artistRegex.exec(fullPrompt)) !== null) {
+      artistMatches.push(match[0].replace(/^,\s*/, ''));
+    }
+    
+    let artistStr = '';
+    let remainder = fullPrompt;
+    if (artistMatches.length > 0) {
+      artistStr = artistMatches.join(', ');
+      artistMatches.forEach(m => { remainder = remainder.replace(m, ''); });
+      remainder = remainder.replace(/^[\s,]+/, '').trim();
+    }
+    
+    const neg = c.v4_negative_prompt?.caption?.base_caption || c.uc || '';
+    
+    // 4. 存入灵感库
+    libData.unshift({
+      name: name || ('解析收藏_' + Date.now()),
+      artist: artistStr,
+      prompt: remainder,
+      neg: neg,
+      img: thumb,
+      time: Date.now()
+    });
+    
+    localStorage.ovoLib = JSON.stringify(libData);
+    renderLib(); 
+    toast('✅ 成功收藏该图及参数！');
   } catch(e) {
     toast('❌ 收藏失败：' + e.message);
   }
