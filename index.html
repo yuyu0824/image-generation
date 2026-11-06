@@ -306,7 +306,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   <button class="btn sm" id="reuseSeed">◎ 种子</button>
   <button class="btn sm" id="toInfo">✧ 解析</button>
   <button class="btn sm" id="saveToLibBtn">♡ 收藏</button>
-    </div>
+</div>
     </div>
     <div class="status"><span id="stTxt">done</span><span id="stSeed">seed: -</span></div>
   </div>
@@ -1102,10 +1102,7 @@ $('libSaveBtn').onclick = () => {
   renderLib();
   toast('✅ 已保存到灵感库');
 };
-
-// 初始化渲染
-renderLib();
-  /* ---------- 一键收藏当前图到灵感库 ---------- */
+/* ---------- 一键收藏当前图到灵感库 ---------- */
 function compressBase64(base64Str) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -1123,27 +1120,66 @@ function compressBase64(base64Str) {
   });
 }
 
+// ★ 辅助函数：直接从图片中提取真实元数据（必须放在外面）
+async function getMetaFromImg(imgSrc) {
+  try {
+    const buf = await (await fetch(imgSrc)).arrayBuffer();
+    const chunks = await pngChunks(buf);
+    const st = await stealth(imgSrc).catch(()=>null);
+    let comment = tryJSON(chunks.Comment||'');
+    let stj = st ? tryJSON(st.text) : null;
+    if (stj && !comment) comment = tryJSON(stj.Comment||'') || stj;
+    
+    if (comment) {
+       let fullPrompt = comment.v4_prompt?.caption?.base_caption || comment.prompt || chunks.Description || '';
+       // 解析画师串
+       let artistStr = '';
+       let remainder = fullPrompt;
+       const artistRegex = /(?:^|,\s*)([0-9.]+\s*::\s*artist\s*:[^,]+::?|[0-9.]+\s*::\s*artist\s*:[^,]+)/gi;
+       let artistMatches = [];
+       let match;
+       while ((match = artistRegex.exec(fullPrompt)) !== null) {
+         artistMatches.push(match[0].replace(/^,\s*/, ''));
+       }
+       if (artistMatches.length > 0) {
+         artistStr = artistMatches.join(', ');
+         artistMatches.forEach(m => { remainder = remainder.replace(m, ''); });
+         remainder = remainder.replace(/^[\s,]+/, '').trim();
+       }
+       
+       const neg = comment.v4_negative_prompt?.caption?.base_caption || comment.uc || '';
+       return { artist: artistStr, prompt: remainder, neg: neg };
+    }
+  } catch(e) {
+    console.error('提取元数据失败', e);
+  }
+  return null;
+}
+
+// ★ 点击收藏按钮的事件
 $('saveToLibBtn').onclick = async () => {
   if (!current || !current[curIdx]) return toast('当前没有图片可以收藏');
   
-  // 弹窗让用户起个名字，默认用种子号
-  const name = prompt('给这张图起个名字（方便以后找）:', '神图_' + (lastSeed || Date.now()));
-  if (name === null) return; // 用户点了取消
+  const name = prompt('给这张图起个名字（方便以后找）:', 'OVO_' + (lastSeed || Date.now()));
+  if (name === null) return; 
   
-  toast('正在生成缩略图并收藏...');
+  toast('正在提取图片内置参数并收藏...');
   
   try {
-    // 压缩当前预览图
+    // 1. 压缩当前预览图作为封面
     const thumb = await compressBase64(current[curIdx]);
     
-    // 自动抓取当前生图页面的画师、正向、反向
-    const artist = $('artistStr').value.trim();
-    const p = $('prompt').value.trim();
-    const n = $('negative').value.trim();
+    // 2. 尝试从图片底层提取它生成时的真实参数
+    const meta = await getMetaFromImg(current[curIdx]);
+    
+    // 3. 如果图片里解出来了，就用解出来的；如果没有（比如被去除了数据），再用当前输入框的
+    const artist = meta ? meta.artist : $('artistStr').value.trim();
+    const p = meta ? meta.prompt : $('prompt').value.trim();
+    const n = meta ? meta.neg : $('negative').value.trim();
     
     // 存入灵感库
     libData.unshift({
-      name: name || ('神图_' + Date.now()),
+      name: name || ('OVO_' + Date.now()),
       artist: artist,
       prompt: p,
       neg: n,
@@ -1152,12 +1188,15 @@ $('saveToLibBtn').onclick = async () => {
     });
     
     localStorage.ovoLib = JSON.stringify(libData);
-    renderLib(); // 刷新灵感库列表
-    toast('✅ 成功收藏到灵感库！');
+    renderLib(); 
+    toast('✅ 成功提取该图的真实参数并收藏！');
   } catch(e) {
     toast('❌ 收藏失败：' + e.message);
   }
 };
+// 初始化渲染
+renderLib();
+
 </script>
 </body>
 </html>
