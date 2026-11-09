@@ -306,6 +306,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   <button class="btn sm" id="reuseSeed">◎ 种子</button>
   <button class="btn sm" id="toInfo">✧ 解析</button>
   <button class="btn sm" id="saveToLibBtn">♡ 收藏</button>
+  <button class="btn sm" id="delCurrentBtn">✕ 删除</button>
 </div>
     </div>
     <div class="status"><span id="stTxt">done</span><span id="stSeed">seed: -</span></div>
@@ -1237,6 +1238,47 @@ const neg = c.v4_negative_prompt?.caption?.base_caption || c.uc || '';
     toast('❌ 收藏失败：' + e.message);
   }
 };
+  /* ---------- 删除当前预览图片 ---------- */
+$('delCurrentBtn').onclick = async () => {
+  if (!current || !current[curIdx]) return toast('当前没有图片可以删除');
+  if (!confirm('确定要删除当前这张图片吗？（会同时从画廊中移除）')) return;
+  
+  const imgSrc = current[curIdx];
+  const seedToDel = lastSeed;
+  
+  try {
+    // 1. 从 IndexedDB 中查找并删除
+    if (db) {
+      const st = db.transaction('h', 'readwrite').objectStore('h');
+      const req = st.getAll();
+      req.onsuccess = () => {
+        const all = req.result;
+        // 匹配种子或者匹配图片地址
+        const target = all.find(h => h.seed === seedToDel || h.src === imgSrc);
+        if (target) {
+          st.delete(target.id).onsuccess = () => {
+            toast('✅ 图片已删除');
+            renderHist(); // 刷新画廊
+          };
+        } else {
+          toast('⚠️ 画廊中未找到该图片');
+        }
+      };
+    }
+    
+    // 2. 清理当前预览区
+    current = [];
+    curIdx = 0;
+    $('stage').innerHTML = '<div class="empty"><b>deleted</b>图片已移除 ♡</div>';
+    $('results').innerHTML = '';
+    $('stTxt').textContent = 'done';
+    $('stSeed').textContent = 'seed: -';
+    
+  } catch(e) {
+    toast('❌ 删除失败：' + e.message);
+  }
+};
+
 // 初始化渲染
 renderLib();
 
