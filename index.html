@@ -121,6 +121,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   justify-content: center;
   font-size: 13px;
 }
+  .lib-card .edit-btn{position:absolute;top:4px;right:30px;width:22px;height:22px;background:rgba(232,169,187,.8);color:#fff;border:0;border-radius:50%;font-size:14px;line-height:22px;text-align:center;z-index:2;cursor:pointer}
 </style>
 </head>
 <body>
@@ -378,7 +379,10 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
       <textarea id="libPrompt" rows="3" placeholder="1girl, ..."></textarea>
       <label>反向提示词</label>
       <textarea id="libNeg" rows="2" placeholder="lowres, ..."></textarea>
-      <button class="btn main" id="libSaveBtn" style="margin-top:15px">💾 保存到灵感库</button>
+     <div class="flex" style="margin-top:15px">
+  <button class="btn main" id="libSaveBtn">◎保存到灵感库</button>
+  <button class="btn" id="libCancelEdit" style="display:none;margin-left:8px">取消修改</button>
+     </div>
     </div>
   </div>
 </div>
@@ -1040,10 +1044,41 @@ function renderLib() {
     const imgSrc = item.img || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="#f4e6ea"/><text x="150" y="200" font-size="20" fill="#c9798f" text-anchor="middle" font-family="sans-serif">No Cover</text></svg>');
     
     div.innerHTML = `
-      <button class="del-btn">×</button>
-      <img src="${imgSrc}" loading="lazy">
-      <div class="info">${item.name || '未命名收藏'}</div>
-    `;
+  <button class="del-btn">×</button>
+  <button class="edit-btn">✎</button>
+  <img src="${imgSrc}" loading="lazy">
+  <div class="info">${item.name || '未命名收藏'}</div>
+`;
+    // 点击编辑
+div.querySelector('.edit-btn').onclick = (e) => {
+  e.stopPropagation(); // 阻止触发套用
+  editingLibIndex = index; // 记录当前编辑的是哪个
+  
+  // 把数据塞回左侧表单
+  $('libName').value = item.name || '';
+  $('libArtist').value = item.artist || '';
+  $('libPrompt').value = item.prompt || '';
+  $('libNeg').value = item.neg || '';
+  
+  // 如果你有传图，也把图塞回去（如果没有就算了）
+  if(item.img) {
+    currentLibImgBase64 = item.img;
+    $('libImgPreview').src = item.img;
+    $('libImgPreview').style.display = 'block';
+    $('libImgText').textContent = '点击可更换图片';
+  } else {
+    currentLibImgBase64 = null;
+    $('libImgPreview').style.display = 'none';
+    $('libImgText').textContent = '点击上传封面缩略图（可选）';
+  }
+  
+  // 改按钮文字，显示取消按钮
+  $('libSaveBtn').textContent = '🔄 保存修改';
+  $('libCancelEdit').style.display = 'block';
+  
+  // 滚动到表单区域
+  document.querySelector('.wrap#viewLib').scrollIntoView({behavior: 'smooth'});
+};
     
     // 点击套用
 div.onclick = (e) => {
@@ -1085,34 +1120,35 @@ div.onclick = (e) => {
 $('libSaveBtn').onclick = () => {
   const name = $('libName').value.trim();
   const artist = $('libArtist').value.trim();
-  const prompt = $('prompt').value.trim(); // 如果你没填，也可以一键把生图页的带过来
-  const libPromptVal = $('libPrompt').value.trim() || prompt; // 智能回退
+  const prompt = $('prompt').value.trim(); 
+  const libPromptVal = $('libPrompt').value.trim() || prompt; 
   const neg = $('libNeg').value.trim() || $('negative').value.trim();
 
   if(!name && !artist && !libPromptVal) return toast('写点内容再保存吧~');
 
-  libData.unshift({
+  const newData = {
     name: name || '未命名收藏',
     artist: artist,
     prompt: libPromptVal,
     neg: neg,
     img: currentLibImgBase64,
     time: Date.now()
-  });
+  };
+
+  if (editingLibIndex !== -1) {
+    // 处于编辑状态：替换掉原来的那一项，保持时间不变
+    newData.time = libData[editingLibIndex].time;
+    libData[editingLibIndex] = newData;
+    toast('✅ 修改已保存');
+    resetLibForm(); // 恢复初始状态
+  } else {
+    // 新增状态
+    libData.unshift(newData);
+    toast('✅ 已保存到灵感库');
+  }
   
   localStorage.ovoLib = JSON.stringify(libData);
-  
-  // 清空表单
-  $('libName').value = '';
-  $('libArtist').value = '';
-  $('libPrompt').value = '';
-  $('libNeg').value = '';
-  currentLibImgBase64 = null;
-  $('libImgPreview').style.display = 'none';
-  $('libImgText').textContent = '点击上传封面缩略图（可选）';
-  
   renderLib();
-  toast('✅ 已保存到灵感库');
 };
 /* ---------- 一键收藏当前图到灵感库 ---------- */
 function compressBase64(base64Str) {
@@ -1295,6 +1331,27 @@ $('delCurrentBtn').onclick = async () => {
   }
 };
 
+  let editingLibIndex = -1; // -1 表示当前是新增状态
+
+function resetLibForm() {
+  editingLibIndex = -1;
+  $('libName').value = '';
+  $('libArtist').value = '';
+  $('libPrompt').value = '';
+  $('libNeg').value = '';
+  currentLibImgBase64 = null;
+  $('libImgPreview').style.display = 'none';
+  $('libImgText').textContent = '点击上传封面缩略图（可选）';
+  
+  $('libSaveBtn').textContent = '◎保存到灵感库';
+  $('libCancelEdit').style.display = 'none';
+}
+
+$('libCancelEdit').onclick = () => {
+  resetLibForm();
+  toast('已取消修改');
+};
+  
 // 初始化渲染
 renderLib();
 
