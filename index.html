@@ -964,6 +964,27 @@ $('restoreBtn').onclick=()=>{const fi=$('restoreIn');fi.value='';fi.onchange=asy
   }catch(e){toast('导入失败：'+e.message,4000)}
 };fi.click()};
 
+  // 监听页面重新可见事件，自动修复裂图
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    console.log('页面恢复可见，尝试重建图片链接...');
+    renderHist(); // 重新渲染历史记录
+    renderLib();  // 重新渲染灵感库
+    // 如果当前有预览图，也尝试重新显示
+    if (current && current.length > 0 && current[curIdx]) {
+      showCur();
+    }
+  }
+});
+
+// 兜底：窗口获得焦点时也触发一次
+window.addEventListener('focus', () => {
+  if (document.visibilityState === 'visible') {
+    renderHist();
+    renderLib();
+  }
+});
+  
 loadCfg();renderPresets();renderChars();renderImgs();renderArtists();
 /* ---------- 面板折叠功能 ---------- */
 document.querySelectorAll('.win').forEach((win, idx) => {
