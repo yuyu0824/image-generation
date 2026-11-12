@@ -121,7 +121,39 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   justify-content: center;
   font-size: 13px;
 }
-  .lib-card .edit-btn{position:absolute;top:4px;right:30px;width:22px;height:22px;background:rgba(232,169,187,.8);color:#fff;border:0;border-radius:50%;font-size:14px;line-height:22px;text-align:center;z-index:2;cursor:pointer}
+.lib-card .edit-btn{position:absolute;top:4px;right:30px;width:22px;height:22px;background:rgba(232,169,187,.8);color:#fff;border:0;border-radius:50%;font-size:14px;line-height:22px;text-align:center;z-index:2;cursor:pointer}
+/* 悬浮球 */
+.fab-btn { display: none; position: fixed; right: 20px; bottom: calc(30px + env(safe-area-inset-bottom)); width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(#f6c6d3,#e8a0b4); color: #fff; font-size: 24px; font-weight: bold; border: 2px solid #fff; box-shadow: 0 6px 16px rgba(201,121,143,.4); z-index: 999; cursor: pointer; align-items: center; justify-content: center; touch-action: manipulation; }
+.fab-btn:active { transform: scale(0.92); }
+
+/* 弹窗左右切换箭头 */
+.modal-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); color: #fff; font-size: 24px; border: 1px solid rgba(255, 255, 255, 0.5); cursor: pointer; z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); -webkit-tap-highlight-color: transparent; }
+.modal-nav:active { background: rgba(255, 255, 255, 0.5); }
+
+/* 手机端排版重排 + 显示悬浮球 */
+@media (max-width: 900px) and (orientation: portrait) {
+  .fab-btn { display: flex; }
+  
+  /* 让大容器变成纵向排列 */
+  #viewGen { display: flex !important; flex-direction: column; gap: 12px; width: 100%; }
+  
+  /* ★ 关键：把左栏和右栏的外壳全部打散，让里面的面板不再受限于左右分栏 */
+  #viewGen > div:first-child { display: contents; }
+  #viewGen > div:last-child { display: contents; }
+  
+  /* ★ 重新给每个面板指定顺序 */
+  #viewGen > div:first-child > .win:nth-child(1) { order: 1; } /* API 设置放最顶上 */
+  #viewGen > div:last-child > .win:nth-child(1)  { order: 2; } /* 预览区放第二位 */
+  #viewGen > div:first-child > .win:nth-child(2) { order: 3; } /* 提示词区 */
+  #viewGen > div:first-child > .win:nth-child(3) { order: 4; } /* 提示词库 */
+  #viewGen > div:last-child > .win:nth-child(2)  { order: 5; } /* 画廊历史 */
+  #viewGen > div:last-child > .win:nth-child(3)  { order: 6; } /* 备份区 */
+}
+/* 角色框折叠 */
+.char-head{cursor:pointer;user-select:none}
+.char-head::after{content:'▼';margin-left:8px;font-size:10px;color:var(--rose);opacity:.6;transition:transform .3s}
+.char.collapsed .char-head::after{transform:rotate(-90deg)}
+.char.collapsed .char-body{display:none}
 </style>
 </head>
 <body>
@@ -145,8 +177,8 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
       <label>配置预设</label>
 <div class="flex" style="margin-bottom:10px;flex-wrap:wrap">
   <select id="presetSelect" style="flex:1;min-width:120px"><option value="">— 选择预设 —</option></select>
-  <button class="btn sm" id="savePreset">✓ 保存</button>
-  <button class="btn sm" id="delPreset">✕ 删除</button>
+<button class="btn sm" id="savePreset">✓ 保存</button>
+<button class="btn sm" id="delPreset">✕ 删除</button>
 </div>
       <label>接口地址 (Base URL)</label>
       <input id="baseUrl" placeholder="https://example.com">
@@ -299,7 +331,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
     <div class="body">
       <div class="stage" id="stage"><div class="empty"><b>welcome</b>写下咒语，点一下生成吧 ♡</div></div>
       <div class="results" id="results"></div>
-      <div class="action-grid">
+       <div class="action-grid">
   <button class="btn sm" id="dl">⇩ 下载</button>
   <button class="btn sm" id="dlClean">✂ 净图</button>
   <button class="btn sm" id="toI2i">↺ 底图</button>
@@ -379,10 +411,10 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
       <textarea id="libPrompt" rows="3" placeholder="1girl, ..."></textarea>
       <label>反向提示词</label>
       <textarea id="libNeg" rows="2" placeholder="lowres, ..."></textarea>
-     <div class="flex" style="margin-top:15px">
-  <button class="btn main" id="libSaveBtn">◎保存到灵感库</button>
+<div class="flex" style="margin-top:15px">
+  <button class="btn main" id="libSaveBtn">💾 保存到灵感库</button>
   <button class="btn" id="libCancelEdit" style="display:none;margin-left:8px">取消修改</button>
-     </div>
+</div>
     </div>
   </div>
 </div>
@@ -407,9 +439,15 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 </div>
 </div>
 </div>
+<!-- 悬浮生成按钮 -->
+<button id="fabGen" class="fab-btn" type="button">✦</button>
 <footer>— THE STRONGER THE WIND, THE STRONGER THE BUTTERFLIES — <br>© OVONovelAI生图 ♡</footer>
 <div class="toast" id="toast"></div>
-<div class="modal" id="modal"><img id="modalImg"></div>
+<div class="modal" id="modal">
+  <button id="modalPrev" class="modal-nav" style="left:10px; display:none;">❮</button>
+  <img id="modalImg">
+  <button id="modalNext" class="modal-nav" style="right:10px; display:none;">❯</button>
+</div>
 
 <input type="file" id="fileIn" accept="image/*,.json,.naiv4vibe" hidden>
 <input type="file" id="restoreIn" accept="application/json,.json" hidden>
@@ -526,23 +564,51 @@ function renderChars(){
   const box=$('chars');box.innerHTML='';
   chars.forEach((c,i)=>{
     const d=document.createElement('div');
-    d.className='char'+(c.enabled===false?' off':'');
-    d.innerHTML=`<div class="flex">
+    // 如果 c.collapsed 为 true，初始状态就是折叠的
+    d.className='char'+(c.enabled===false?' off':'')+(c.collapsed?' collapsed':'');
+    d.innerHTML=`<div class="flex char-head">
       <label class="chk" style="margin:0"><input type="checkbox" class="en" ${c.enabled!==false?'checked':''}> 角色 ${i+1}</label>
       <button class="btn sm del" style="margin-left:auto">删除</button>
     </div>
-    <label>正向</label><textarea>${c.p||''}</textarea>
-    <label>反向</label><textarea>${c.n||''}</textarea>
-    <div class="row"><div><label>X 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.x??0.5}"></div><div><label>Y 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.y??0.5}"></div></div>`;
-    const en=d.querySelector('.en');
+    <div class="char-body">
+      <label>正向</label><textarea>${c.p||''}</textarea>
+      <label>反向</label><textarea>${c.n||''}</textarea>
+      <div class="row"><div><label>X 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.x??0.5}"></div><div><label>Y 位置 (0~1)</label><input type="number" step="0.1" min="0" max="1" value="${c.y??0.5}"></div></div>
+    </div>`;
+    
+    const head = d.querySelector('.char-head');
+    const en = d.querySelector('.en');
     const [ta1,ta2]=d.querySelectorAll('textarea');
     const [x,y]=d.querySelectorAll('input[type=number]');
-    en.onchange=()=>{c.enabled=en.checked;d.classList.toggle('off',!en.checked);saveCfg()};
+    const delBtn = d.querySelector('.del');
+
+    // 点击标题栏折叠/展开
+    head.onclick=()=>{
+      c.collapsed = !c.collapsed;
+      d.classList.toggle('collapsed', c.collapsed);
+      saveCfg(); // 记住折叠状态
+    };
+
+    // 勾选框和删除按钮不触发折叠
+    en.onclick=(e)=>e.stopPropagation();
+    en.onchange=()=>{
+      c.enabled=en.checked;
+      d.classList.toggle('off',!en.checked);
+      saveCfg();
+    };
+    
     ta1.oninput=()=>c.p=ta1.value;
     ta2.oninput=()=>c.n=ta2.value;
     x.oninput=()=>c.x=+x.value;
     y.oninput=()=>c.y=+y.value;
-    d.querySelector('.del').onclick=()=>{chars.splice(i,1);renderChars();saveCfg()};
+    
+    delBtn.onclick=(e)=>{
+      e.stopPropagation(); // 阻止冒泡
+      chars.splice(i,1);
+      renderChars();
+      saveCfg();
+    };
+    
     box.appendChild(d);
   });
 }
@@ -729,8 +795,21 @@ function showCur(){
   $('stage').innerHTML='';const im=new Image();im.src=current[curIdx];im.onclick=()=>openModal(im.src);$('stage').appendChild(im);
   $('results').innerHTML='';if(current.length>1)current.forEach((s,i)=>{const t=new Image();t.src=s;if(i===curIdx)t.className='on';t.onclick=()=>{curIdx=i;showCur()};$('results').appendChild(t)});
 }
-function openModal(s){$('modalImg').src=s;$('modal').style.display='flex'}
-$('modal').onclick=()=>$('modal').style.display='none';
+function openModal(s) {
+  if (!s) return;
+  $('modalImg').src = s;
+  $('modal').style.display = 'flex';
+  updateModalNav();
+}
+function updateModalNav() {
+  $('modalPrev').style.display = (curIdx > 0) ? 'flex' : 'none';
+  $('modalNext').style.display = (curIdx < current.length - 1) ? 'flex' : 'none';
+}
+// 点空白处或图片时关闭弹窗
+$('modal').onclick=(e)=>{ if(e.target === $('modal') || e.target === $('modalImg')) $('modal').style.display='none'; };
+// 左右切换
+$('modalPrev').onclick = (e) => { e.stopPropagation(); if (curIdx > 0) { curIdx--; openModal(current[curIdx]); showCur(); } };
+$('modalNext').onclick = (e) => { e.stopPropagation(); if (curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); showCur(); } };
 $('dl').onclick=()=>{if(!current[curIdx])return;const a=document.createElement('a');a.href=current[curIdx];a.download='OVO_'+(lastSeed||Date.now())+'.png';a.click()};
 $('toI2i').onclick=()=>{if(!current[curIdx])return;i2i=current[curIdx];renderImgs();toast('已设为图生图底图')};
 $('toVibe').onclick=()=>{if(!current[curIdx])return;vibes.push({src:current[curIdx],s:.6,ie:1});renderImgs();toast('已加入参考图')};
@@ -754,7 +833,14 @@ function renderHist(){if(!db)return;const st=db.transaction('h').objectStore('h'
   if(manageMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=selIds.has(h.id);
     const tog=on=>{on?selIds.add(h.id):selIds.delete(h.id);cb.checked=on;g.classList.toggle('sel',on);upd()};
     cb.onclick=ev=>ev.stopPropagation();cb.onchange=()=>tog(cb.checked);g.appendChild(cb);g.onclick=()=>tog(!selIds.has(h.id))}
-  else g.onclick=()=>{current=[h.src];curIdx=0;lastSeed=h.seed;showCur();$('stSeed').textContent='seed: '+h.seed;window.scrollTo({top:0,behavior:'smooth'})};
+  else g.onclick=()=>{
+  current = all.map(x => x.src); // 把画廊当前展示的图全给弹窗
+  curIdx = all.findIndex(x => x.id === h.id);
+  lastSeed = h.seed;
+  showCur();
+  openModal(current[curIdx]); // 直接弹窗
+  $('stSeed').textContent='seed: '+h.seed;
+};
   frag.appendChild(g)});gal.appendChild(frag);
   if(total>all.length){const b=document.createElement('button');b.className='btn sm';b.style.gridColumn='1/-1';b.textContent='加载更多（还有 '+(total-all.length)+' 张）';b.onclick=()=>{histShow+=30;renderHist()};gal.appendChild(b)}
   }}}
@@ -963,8 +1049,7 @@ $('restoreBtn').onclick=()=>{const fi=$('restoreIn');fi.value='';fi.onchange=asy
     loadCfg();renderChars();toast('备份已恢复 ♡');
   }catch(e){toast('导入失败：'+e.message,4000)}
 };fi.click()};
-
-  // 监听页面重新可见事件，自动修复裂图
+// 监听页面重新可见事件，自动修复裂图
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     console.log('页面恢复可见，尝试重建图片链接...');
@@ -984,7 +1069,7 @@ window.addEventListener('focus', () => {
     renderLib();
   }
 });
-  
+
 loadCfg();renderPresets();renderChars();renderImgs();renderArtists();
 /* ---------- 面板折叠功能 ---------- */
 document.querySelectorAll('.win').forEach((win, idx) => {
@@ -1006,6 +1091,16 @@ document.querySelectorAll('.win').forEach((win, idx) => {
     win.classList.toggle('collapsed');
     localStorage.setItem(key, win.classList.contains('collapsed'));
   };
+});
+// 悬浮球点击 = 点击生成按钮
+$('fabGen').addEventListener('click', () => {
+  $('gen').click();
+});
+// 顺便加个键盘左右键支持
+document.addEventListener('keydown', e => {
+  if ($('modal').style.display !== 'flex') return;
+  if (e.key === 'ArrowLeft' && curIdx > 0) { curIdx--; openModal(current[curIdx]); showCur(); }
+  if (e.key === 'ArrowRight' && curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); showCur(); }
 });
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
 
@@ -1069,7 +1164,7 @@ function renderLib() {
   <button class="edit-btn">✎</button>
   <img src="${imgSrc}" loading="lazy">
   <div class="info">${item.name || '未命名收藏'}</div>
-`;
+    `;
     // 点击编辑
 div.querySelector('.edit-btn').onclick = (e) => {
   e.stopPropagation(); // 阻止触发套用
@@ -1311,7 +1406,7 @@ const neg = c.v4_negative_prompt?.caption?.base_caption || c.uc || '';
     toast('❌ 收藏失败：' + e.message);
   }
 };
-  /* ---------- 删除当前预览图片 ---------- */
+/* ---------- 删除当前预览图片 ---------- */
 $('delCurrentBtn').onclick = async () => {
   if (!current || !current[curIdx]) return toast('当前没有图片可以删除');
   if (!confirm('确定要删除当前这张图片吗？（会同时从画廊中移除）')) return;
@@ -1352,7 +1447,7 @@ $('delCurrentBtn').onclick = async () => {
   }
 };
 
-  let editingLibIndex = -1; // -1 表示当前是新增状态
+let editingLibIndex = -1; // -1 表示当前是新增状态
 
 function resetLibForm() {
   editingLibIndex = -1;
@@ -1364,7 +1459,7 @@ function resetLibForm() {
   $('libImgPreview').style.display = 'none';
   $('libImgText').textContent = '点击上传封面缩略图（可选）';
   
-  $('libSaveBtn').textContent = '◎保存到灵感库';
+  $('libSaveBtn').textContent = '💾 保存到灵感库';
   $('libCancelEdit').style.display = 'none';
 }
 
@@ -1372,7 +1467,7 @@ $('libCancelEdit').onclick = () => {
   resetLibForm();
   toast('已取消修改');
 };
-  
+
 // 初始化渲染
 renderLib();
 
