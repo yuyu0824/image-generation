@@ -864,6 +864,7 @@ return {input:prompt, model:mdl, action, parameters:p};
 
 /* ---------- generate ---------- */
 let current=[],currentRecords=[],curIdx=0,lastSeed=null,busy=false;
+let previewSource='generated'; // gallery 历史浏览不在预览区重复绘制缩略图
 const key=()=>$('apiKey').value.trim();
 async function extractImgs(text){
   const out=[];const re=/(data:image\/[a-z]+;base64,[A-Za-z0-9+/=]+)|(https?:\/\/[^\s)"'<>]+?\.(?:png|jpe?g|webp)(?:\?[^\s)"'<>]*)?)|!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/gi;let m;
@@ -909,7 +910,7 @@ $('gen').onclick=async()=>{
   try{
     generationSnapshot={prompt:$('prompt').value,body:buildParams(seed)};
     const imgs=await genOnce(seed);if(!imgs.length)throw new Error('没有返回图片');
-    current=await Promise.all(imgs.map(toDataUrl));curIdx=0;lastSeed=seed;
+    current=await Promise.all(imgs.map(toDataUrl));previewSource='generated';curIdx=0;lastSeed=seed;
     currentRecords=current.map(src=>({src,seed,prompt:generationSnapshot.prompt,parameters:generationSnapshot.body,t:Date.now()}));
     showCur();
     try { await Promise.all(currentRecords.map(saveHistoryRecord)); } catch(e) { toast('图片已生成，但历史保存失败：'+e.message,6000); }
@@ -919,20 +920,10 @@ $('gen').onclick=async()=>{
   busy=false;$('gen').disabled=false;$('gen').textContent='♡ 生成图像 ♡';
 };
 async function toDataUrl(u){if(u.startsWith('data:image/'))return u;try{const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);const b=await r.blob();if(!b.size)throw new Error('图片为空');return await readFile(b)}catch(e){throw new Error('无法保存返回图片（可能是图片地址跨域限制）：'+e.message)}finally{if(u.startsWith('blob:'))URL.revokeObjectURL(u)}}
-// 只更新顶部大图，清空下面的小图列表
-function updateStageWithoutList(src) {
-  syncCurrentRecord();
-  $('stage').innerHTML = '';
-  const im = new Image();
-  im.src = src;
-  im.onclick = () => openModal(im.src);
-  $('stage').appendChild(im);
-  $('results').innerHTML = '';
-}
 function showCur(){
   syncCurrentRecord();
   $('stage').innerHTML='';const im=new Image();im.src=current[curIdx];im.onclick=()=>openModal(im.src);$('stage').appendChild(im);
-  $('results').innerHTML='';if(current.length>1)current.forEach((s,i)=>{const t=new Image();t.src=s;if(i===curIdx)t.className='on';t.onclick=()=>{curIdx=i;showCur()};$('results').appendChild(t)});
+  $('results').innerHTML='';if(previewSource==='generated'&&current.length>1)current.forEach((s,i)=>{const t=new Image();t.src=s;if(i===curIdx)t.className='on';t.onclick=()=>{curIdx=i;showCur()};$('results').appendChild(t)});
 }
 function openModal(s,fromInspector=false) {
   $('modal').dataset.inspector=fromInspector?'1':'';
@@ -949,8 +940,8 @@ function updateModalNav() {
 // 点空白处或图片时关闭弹窗
 $('modal').onclick=(e)=>{ if(e.target === $('modal') || e.target === $('modalImg')) $('modal').style.display='none'; };
 // 左右切换
-$('modalPrev').onclick = (e) => { e.stopPropagation(); if (curIdx > 0) { curIdx--; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); } };
-$('modalNext').onclick = (e) => { e.stopPropagation(); if (curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); } };
+$('modalPrev').onclick = (e) => { e.stopPropagation(); if (curIdx > 0) { curIdx--; openModal(current[curIdx]); showCur(); } };
+$('modalNext').onclick = (e) => { e.stopPropagation(); if (curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); showCur(); } };
 $('dl').onclick=()=>{if(!current[curIdx])return;const a=document.createElement('a');a.href=current[curIdx];a.download='OVO_'+(lastSeed||Date.now())+'.png';a.click()};
 $('toI2i').onclick=()=>{if(!current[curIdx])return;i2i=current[curIdx];renderImgs();toast('已设为图生图底图')};
 $('toVibe').onclick=()=>{if(!current[curIdx])return;vibes.push({src:current[curIdx],s:.6,ie:1});renderImgs();toast('已加入参考图')};
@@ -975,11 +966,12 @@ function renderHist(){if(!db)return;const st=db.transaction('h').objectStore('h'
     const tog=on=>{on?selIds.add(h.id):selIds.delete(h.id);cb.checked=on;g.classList.toggle('sel',on);upd()};
     cb.onclick=ev=>ev.stopPropagation();cb.onchange=()=>tog(cb.checked);g.appendChild(cb);g.onclick=()=>tog(!selIds.has(h.id))}
   else g.onclick=()=>{
+  previewSource='gallery';
   currentRecords = all.map(record=>({...record}));
   current = all.map(x => x.src); // 把画廊当前展示的图全给弹窗
   curIdx = all.findIndex(x => x.id === h.id);
   lastSeed = h.seed;
-  updateStageWithoutList(current[curIdx]); // ★ 改成只更新大图
+  showCur(); // ★ 改成只更新大图
   openModal(current[curIdx]); // 直接弹窗
   $('stSeed').textContent='seed: '+h.seed;
 };
@@ -1278,8 +1270,8 @@ document.addEventListener('keydown', e => {
   if ($('modal').style.display !== 'flex') return;
   if(e.key==='Escape'){$('modal').style.display='none';return;}
   if($('modal').dataset.inspector==='1')return;
-  if (e.key === 'ArrowLeft' && curIdx > 0) { curIdx--; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); }
-  if (e.key === 'ArrowRight' && curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); }
+  if (e.key === 'ArrowLeft' && curIdx > 0) { curIdx--; openModal(current[curIdx]); showCur(); }
+  if (e.key === 'ArrowRight' && curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); showCur(); }
 });
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
 
