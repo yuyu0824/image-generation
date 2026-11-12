@@ -791,7 +791,16 @@ $('gen').onclick=async()=>{
   busy=false;$('gen').disabled=false;$('gen').textContent='♡ 生成图像 ♡';
 };
 async function toDataUrl(u){if(u.startsWith('data:'))return u;try{const b=await (await fetch(u)).blob();return await readFile(b)}catch(e){return u}}
-function showCur(){
+// 只更新顶部大图，清空下面的小图列表
+function updateStageWithoutList(src) {
+  $('stage').innerHTML = '';
+  const im = new Image();
+  im.src = src;
+  im.onclick = () => openModal(im.src);
+  $('stage').appendChild(im);
+  $('results').innerHTML = '';
+}
+  function showCur(){
   $('stage').innerHTML='';const im=new Image();im.src=current[curIdx];im.onclick=()=>openModal(im.src);$('stage').appendChild(im);
   $('results').innerHTML='';if(current.length>1)current.forEach((s,i)=>{const t=new Image();t.src=s;if(i===curIdx)t.className='on';t.onclick=()=>{curIdx=i;showCur()};$('results').appendChild(t)});
 }
@@ -808,8 +817,8 @@ function updateModalNav() {
 // 点空白处或图片时关闭弹窗
 $('modal').onclick=(e)=>{ if(e.target === $('modal') || e.target === $('modalImg')) $('modal').style.display='none'; };
 // 左右切换
-$('modalPrev').onclick = (e) => { e.stopPropagation(); if (curIdx > 0) { curIdx--; openModal(current[curIdx]); showCur(); } };
-$('modalNext').onclick = (e) => { e.stopPropagation(); if (curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); showCur(); } };
+$('modalPrev').onclick = (e) => { e.stopPropagation(); if (curIdx > 0) { curIdx--; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); } };
+$('modalNext').onclick = (e) => { e.stopPropagation(); if (curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); } };
 $('dl').onclick=()=>{if(!current[curIdx])return;const a=document.createElement('a');a.href=current[curIdx];a.download='OVO_'+(lastSeed||Date.now())+'.png';a.click()};
 $('toI2i').onclick=()=>{if(!current[curIdx])return;i2i=current[curIdx];renderImgs();toast('已设为图生图底图')};
 $('toVibe').onclick=()=>{if(!current[curIdx])return;vibes.push({src:current[curIdx],s:.6,ie:1});renderImgs();toast('已加入参考图')};
@@ -833,11 +842,11 @@ function renderHist(){if(!db)return;const st=db.transaction('h').objectStore('h'
   if(manageMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=selIds.has(h.id);
     const tog=on=>{on?selIds.add(h.id):selIds.delete(h.id);cb.checked=on;g.classList.toggle('sel',on);upd()};
     cb.onclick=ev=>ev.stopPropagation();cb.onchange=()=>tog(cb.checked);g.appendChild(cb);g.onclick=()=>tog(!selIds.has(h.id))}
-  else g.onclick=()=>{
+    else g.onclick=()=>{
   current = all.map(x => x.src); // 把画廊当前展示的图全给弹窗
   curIdx = all.findIndex(x => x.id === h.id);
   lastSeed = h.seed;
-  showCur();
+  updateStageWithoutList(current[curIdx]); // ★ 改成只更新大图
   openModal(current[curIdx]); // 直接弹窗
   $('stSeed').textContent='seed: '+h.seed;
 };
@@ -1099,8 +1108,8 @@ $('fabGen').addEventListener('click', () => {
 // 顺便加个键盘左右键支持
 document.addEventListener('keydown', e => {
   if ($('modal').style.display !== 'flex') return;
-  if (e.key === 'ArrowLeft' && curIdx > 0) { curIdx--; openModal(current[curIdx]); showCur(); }
-  if (e.key === 'ArrowRight' && curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); showCur(); }
+  if (e.key === 'ArrowLeft' && curIdx > 0) { curIdx--; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); }
+  if (e.key === 'ArrowRight' && curIdx < current.length - 1) { curIdx++; openModal(current[curIdx]); updateStageWithoutList(current[curIdx]); }
 });
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')$('gen').click()});
 
