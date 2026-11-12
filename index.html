@@ -816,7 +816,12 @@ bindDrop('crDrop',d=>{crefs=[d];renderImgs()});
 /* ---------- build NovelAI params ---------- */
 const QUALITY={v45:', very aesthetic, masterpiece, no text',v4:', no text, best quality, very aesthetic, absurdres',v3:', best quality, amazing quality, very aesthetic, absurdres'};
 const UC={0:'nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page',1:'nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page',2:'nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy',3:''};
-function ver(m){m=m.toLowerCase();if(/(?:diffusion[-_. ]?|v)5(?:\b|_)/.test(m))throw new Error('当前前端尚未实现 V5 原生参数，请使用 V4/V4.5 或匹配的前端');return /4-5|4\.5/.test(m)?'v45':/-4|v4/.test(m)?'v4':'v3'}
+function ver(m){
+ m=m.toLowerCase();
+ // 保留原前端的兼容参数回退，不按模型名禁止请求。
+ // V5 等模型名继续传给服务端，由兼容服务负责解释参数；不表示已实现其完整原生协议。
+ return /4-5|4\.5/.test(m)?'v45':/-4|v4/.test(m)?'v4':'v3';
+}
 function buildParams(seed){
  const m=model(),v=ver(m),isV4=v!=='v3';
  const _art=$('artistStr').value.trim().replace(/,+$/,'');let prompt=$('prompt').value.trim();
