@@ -66,7 +66,7 @@ input[type=checkbox]{width:auto;accent-color:var(--rose)}
 .thumb .x{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--rose);color:#fff;border:0;cursor:pointer;font-size:11px;line-height:18px;padding:0}
 .thumb input{padding:2px 4px;font-size:11px;margin-top:3px}
 .stage{min-height:420px;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#fff 0 10px,#fdf3f6 10px 20px);border:1px solid var(--line);border-radius:6px;position:relative;overflow:hidden}
-.stage img{max-width:100%;max-height:72vh;display:block;border-radius:4px}
+.stage img{max-width:100%;max-height:var(--preview-max-height,72vh);display:block;border-radius:4px}
 .stage .empty{text-align:center;color:var(--ink2);font-family:"Cormorant Garamond",serif;font-size:20px}
 .stage .empty b{font-family:"Pinyon Script",cursive;font-size:44px;color:var(--pink2);display:block;font-weight:400}
 .results{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -131,7 +131,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 .modal-nav:active { background: rgba(255, 255, 255, 0.5); }
 
 /* 手机端排版重排 + 显示悬浮球 */
-@media (max-width: 900px) and (orientation: portrait) {
+@media (max-width: 900px) {
   .fab-btn { display: flex; }
   
   /* 让大容器变成纵向排列 */
@@ -1623,6 +1623,36 @@ $('recoveryDelete').onclick=()=>{
  }catch(e){toast('删除失败：'+e.message,5000);}
 };
 recoveryUIReady=true;renderRecoveryBackups();
+// Freeze the preview height while a text keyboard is likely open.
+// The modal keeps its viewport-relative cap so it fits the currently visible area.
+(function setupStablePreviewHeight(){
+ const root=document.documentElement;
+ let baselineHeight=window.innerHeight||root.clientHeight||800;
+ let baselineWidth=window.innerWidth||root.clientWidth||400;
+ let editing=false,keyboardSession=false;
+ const canEdit=el=>!!el&&(el.isContentEditable||el.tagName==='TEXTAREA'||(el.tagName==='INPUT'&&!['button','submit','reset','checkbox','radio','range','file','color','hidden'].includes(el.type)));
+ const apply=()=>root.style.setProperty('--preview-max-height',Math.round(baselineHeight*0.72)+'px');
+ function update(){
+  const height=window.innerHeight||root.clientHeight;
+  const width=window.innerWidth||root.clientWidth;
+  if(!height||!width)return;
+  if(Math.abs(width-baselineWidth)>40){
+   // Actual rotation, split-screen or a substantial window-width change.
+   baselineWidth=width;baselineHeight=height;keyboardSession=editing;
+  }else if(keyboardSession){
+   // Blur can fire before the keyboard finishes closing. Keep the old height
+   // until the window returns, rather than capturing the reduced height.
+   if(height>=baselineHeight-2){baselineHeight=Math.max(height,baselineHeight);if(!editing)keyboardSession=false;}
+  }else{baselineHeight=height;baselineWidth=width;}
+  apply();
+ }
+ document.addEventListener('focusin',event=>{if(canEdit(event.target)){editing=true;keyboardSession=true;apply();}});
+ document.addEventListener('focusout',()=>{setTimeout(()=>{editing=canEdit(document.activeElement);update();},0);});
+ window.addEventListener('resize',update);
+ window.visualViewport?.addEventListener('resize',update);
+ window.addEventListener('pageshow',update);
+ apply();
+})();
 </script>
 </body>
 </html>
