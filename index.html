@@ -154,6 +154,45 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 .char-head::after{content:'▼';margin-left:8px;font-size:10px;color:var(--rose);opacity:.6;transition:transform .3s}
 .char.collapsed .char-head::after{transform:rotate(-90deg)}
 .char.collapsed .char-body{display:none}
+
+#artEditor[hidden]{display:none}
+.art-toolbar{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.art-toolbar input:not([type="checkbox"]),.art-toolbar select{flex:1;min-width:120px;width:auto}
+#artEditor{padding:12px;border:1px solid var(--line,#e7cfd5);border-radius:10px;margin:10px 0}
+.art-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.art-item{min-width:0;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.art-item .art-name{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:40px}
+.art-item small{width:100%;overflow-wrap:anywhere}
+.art-pager{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+#artPanel > summary.bar{display:flex;list-style:none;margin:0}
+#artPanel > summary.bar::-webkit-details-marker{display:none}
+#artPanel > summary.bar::marker{content:""}
+#artPanel:not([open]) > summary.bar::after{transform:rotate(-90deg)}
+#artPanel:not([open]) > summary.bar{border-bottom:none}
+@media(max-width:380px){.art-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+#viewLib{grid-template-columns:minmax(0,1fr)}
+#libBrowsePane{order:1}#libEditorPane{order:0}#libEditorPane[hidden],#libDetail[hidden]{display:none}
+#libGallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#libGallery .lib-card{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;padding:10px;cursor:pointer;position:relative;min-width:0;align-items:start}
+#libGallery .lib-card img{width:72px;height:90px;object-fit:cover;border-radius:6px;grid-row:1 / 4}
+#libGallery .lib-card .info{position:static;background:none;color:var(--ink);padding:0;font-weight:700;overflow-wrap:anywhere;text-align:left}
+#libGallery .lib-card .lib-snippet{font-size:12px;opacity:.8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+#libGallery .lib-actions{display:flex;gap:6px;flex-wrap:wrap}
+#libGallery .lib-card .del-btn,#libGallery .lib-card .edit-btn{position:static;width:auto;height:auto;opacity:1;display:inline-block;border-radius:6px;font-size:12px;padding:5px 8px}
+#libDetail{position:fixed;inset:0;background:#0008;z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px}
+.lib-detail-box{background:var(--paper,#fff);border-radius:12px;padding:16px;width:min(660px,100%);max-height:85vh;overflow:auto;box-sizing:border-box}
+#libDetailTitle{flex:1;overflow-wrap:anywhere}#libDetailImage{display:block;max-width:100%;max-height:220px;margin:10px auto;object-fit:contain}
+#libDetailText pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:13px;padding:10px;background:var(--bg);border-radius:8px}
+@media(max-width:600px){#libGallery{grid-template-columns:minmax(0,1fr)}}
+
+.art-toolbar input[type="checkbox"]{flex:0 0 auto;min-width:0;width:16px;height:16px;padding:0;margin:0}
+#viewLib .art-toolbar .chk{white-space:nowrap;margin:0;gap:5px}
+#libApplyOptions{display:flex;align-items:center;flex-wrap:nowrap;gap:10px;margin:10px 0 12px;padding:8px;border:1px dashed var(--pink2);border-radius:6px;background:#fbf3f5;overflow-x:auto;white-space:nowrap;font-size:12px}
+#libApplyOptions .chk{flex:0 0 auto;font-size:12px;gap:4px;white-space:nowrap}
+#libApplyOptions input{width:15px;height:15px;min-width:15px;margin:0;padding:0;flex:0 0 auto}
+#libApplyOptions > span{flex:0 0 auto}
+.lib-category-badge{font-size:11px;font-weight:400;color:var(--rose);display:inline-block;margin-left:6px}
 </style>
 </head>
 <body>
@@ -311,16 +350,21 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
   </div>
 
 <div class="win">
-  <div class="bar">♡ prompt.library<span class="dots"><i></i><i></i><i></i></span></div>
-  <div class="body">
-    <div class="hint">收藏常用正向提示词，点一下即可插入到「正向提示词」框。</div>
-    <div class="row" style="margin-top:6px">
-      <div><label>名称</label><input id="artName" placeholder="如：赛博朋克 / 汉服"></div>
-      <div><label>标签串</label><input id="artTags" placeholder="cyberpunk, neon lights, ..."></div>
-    </div>
-    <button class="btn sm" id="artAdd" style="margin-top:6px">＋ 收藏</button>
-    <div class="chips" id="artChips"></div>
+<details id="artPanel" open>
+ <summary class="bar" style="cursor:pointer">♡ prompt.library · <span id="artCount">0 条</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></summary>
+ <div class="body">
+  <div class="art-toolbar"><input id="artSearch" type="search" aria-label="搜索提示词库" placeholder="搜索名称或标签串…"><button class="btn sm" id="artNew">＋ 新增</button></div>
+  <div class="art-toolbar"><select id="artFilter" aria-label="分类筛选"><option value="">全部分类</option></select><button class="btn sm" id="artManage" aria-pressed="false">管理</button></div>
+  <div id="artEditor" hidden>
+   <label for="artName">名称</label><input id="artName" placeholder="如：汉服 / 逆光">
+   <label for="artTags">标签串</label><textarea id="artTags" rows="4" placeholder="hanfu, intricate embroidery, ..."></textarea>
+   <label for="artCategoryInput">分类（可自定义）</label><input id="artCategoryInput" list="artCategories" placeholder="未分类"><datalist id="artCategories"></datalist>
+   <div class="art-toolbar"><button class="btn sm" id="artAdd">保存</button><button class="btn sm" id="artCancel">取消</button></div>
   </div>
+  <p class="hint" id="artHint"></p><div id="artChips" class="art-grid"></div>
+  <div class="art-pager"><button class="btn sm" id="artPrev" aria-label="上一页">‹ 上一页</button><span id="artPageInfo" aria-live="polite"></span><button class="btn sm" id="artNext" aria-label="下一页">下一页 ›</button></div>
+ </div>
+</details>
 </div>
 </div>
 
@@ -408,7 +452,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
 </div>
 <div class="wrap" id="viewLib" style="display:none">
 <!-- 左边：添加表单 -->
-<div>
+<div id="libEditorPane" hidden>
   <div class="win">
     <div class="bar">♡ add.collection<span class="dots"><i></i><i></i><i></i></span></div>
     <div class="body">
@@ -418,6 +462,7 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
       </div>
       <label>名称 (备注)</label>
       <input id="libName" placeholder="比如：赛博朋克风 / 某张神图的参数">
+      <label for="libCategory">分类（可自定义）</label><input id="libCategory" list="libCategoryOptions" placeholder="未分类"><datalist id="libCategoryOptions"></datalist>
       <label>画师串</label>
       <textarea id="libArtist" rows="2" placeholder="artist:xxx, ..."></textarea>
       <label>正向提示词</label>
@@ -426,31 +471,39 @@ pre.raw{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1
       <textarea id="libNeg" rows="2" placeholder="lowres, ..."></textarea>
 <div class="flex" style="margin-top:15px">
   <button class="btn main" id="libSaveBtn">💾 保存到灵感库</button>
-  <button class="btn" id="libCancelEdit" style="display:none;margin-left:8px">取消修改</button>
+  <button class="btn" id="libCancelEdit" style="margin-left:8px">取消 / 收起</button>
 </div>
     </div>
   </div>
 </div>
 <!-- 右边：展示网格 -->
-<div>
+<div id="libBrowsePane">
 <div class="win">
   <div class="bar">♡ my.collections<span class="dots"><i></i><i></i><i></i></span></div>
   <div class="body">
-    <div class="hint" style="margin-bottom:10px">点击卡片可以直接套用到生图页，点右上角 × 删除。</div>
+    <div class="art-toolbar"><input id="libSearch" type="search" aria-label="搜索收藏" placeholder="搜索名称、画师或提示词…"><button class="btn sm" id="libNew">＋ 新增收藏</button></div>
+<div class="art-toolbar"><label class="chk"><input id="libStarOnly" type="checkbox">只看星标</label><select id="libCategoryFilter" aria-label="收藏分类"><option value="">全部分类</option></select><select id="libSort" aria-label="收藏排序"><option value="original">原有顺序</option><option value="new">最近添加</option><option value="name">名称排序</option></select><span id="libTotal" class="hint"></span></div>
+<div class="hint">点击收藏查看完整内容，确认后套用；☆ 可标记常用收藏。</div>
     
     <!-- 👇 新加的勾选栏 👇 -->
-    <div style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;background:#fbf3f5;padding:8px;border-radius:6px;border:1px dashed var(--pink2)">
-      <span style="color:var(--rose);font-weight:700">点击时覆盖：</span>
+    <div id="libApplyOptions">
+      <span style="color:var(--rose);font-weight:700">套用：</span>
       <label class="chk" style="margin:0"><input type="checkbox" id="libApplyArtist" checked> 画师串</label>
       <label class="chk" style="margin:0"><input type="checkbox" id="libApplyPrompt" checked> 正向词</label>
       <label class="chk" style="margin:0"><input type="checkbox" id="libApplyNeg" checked> 反向词</label>
     </div>
     <!-- 👆 新加的勾选栏 👆 -->
 
-    <div class="gallery" id="libGallery" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));"></div>
+    <div class="gallery" id="libGallery"></div>
+<div class="art-pager"><button class="btn sm" id="libPrev">‹ 上一页</button><span id="libPageInfo" aria-live="polite"></span><button class="btn sm" id="libNext">下一页 ›</button></div>
   </div>
 </div>
 </div>
+</div>
+<div id="libDetail" hidden role="dialog" aria-modal="true" aria-labelledby="libDetailTitle">
+ <div class="lib-detail-box"><div class="art-toolbar"><strong id="libDetailTitle"></strong><button class="btn sm" id="libDetailClose">关闭</button></div>
+ <img id="libDetailImage" alt="收藏封面"><div id="libDetailText"></div>
+ <p class="hint" id="libDetailScope"></p><div class="art-toolbar"><button class="btn main" id="libDetailApply">套用所选字段</button><button class="btn" id="libDetailEdit">编辑收藏</button></div></div>
 </div>
 <!-- 悬浮生成按钮 -->
 <button id="fabGen" class="fab-btn" type="button">✦</button>
@@ -1146,31 +1199,62 @@ if (artistStr) {
    saveCfg();toast('✅ 已套用可读取的参数；请核对模型及参考图');
 };
   
-/* ---------- artist library ---------- */
+/* ---------- prompt library ---------- */
 let artists=[];
-try{artists=JSON.parse(localStorage.ovoArtists||'[]')}catch(e){}
-function saveArtists(){localStorage.ovoArtists=JSON.stringify(artists)}
-function renderArtists(){
-  const box=$('artChips');box.innerHTML='';
-  artists.forEach((a,i)=>{
-    const c=document.createElement('span');c.className='chip';c.title=a.tags;c.innerHTML=esc(a.name)+'<span class="del">×</span>';
-    // 👇 这里把插入目标从 artistStr 改成了 prompt
-    c.onclick=()=>{
-      const p=$('prompt');
-      p.value=p.value.trim()?p.value.trim().replace(/,+$/,'')+', '+a.tags:a.tags;
-      p.dispatchEvent(new Event('input'));
-      toast('已插入「'+a.name+'」到正向提示词');
-    };
-    c.querySelector('.del').onclick=ev=>{
-      ev.stopPropagation();
-      if(confirm('删除「'+a.name+'」？')){
-        artists.splice(i,1);saveArtists();renderArtists();
-      }
-    };
-    box.appendChild(c)
-  })
+try{const stored=JSON.parse(localStorage.ovoArtists||'[]');if(Array.isArray(stored))artists=stored;}catch(e){}
+let artPage=1,artManaging=false,artEditing=null;
+const artPageSize=12;
+function artCategory(a){return typeof a.category==='string'&&a.category.trim()?a.category.trim():'未分类';}
+function saveArtists(next=artists){
+ try{localStorage.setItem('ovoArtists',JSON.stringify(next));artists=next;return true;}
+ catch(e){toast('提示词库保存失败：'+e.message,6000);return false;}
 }
-$('artAdd').onclick=()=>{const n=$('artName').value.trim(),t=$('artTags').value.trim();if(!n||!t)return toast('请填写名称和标签串');artists.push({name:n,tags:t});saveArtists();renderArtists();$('artName').value='';$('artTags').value='';toast('已收藏 ♡')};
+function closeArtEditor(){artEditing=null;$('artEditor').hidden=true;$('artName').value='';$('artTags').value='';$('artCategoryInput').value='';$('artAdd').textContent='保存';}
+function openArtEditor(item=null){artEditing=item;$('artEditor').hidden=false;$('artName').value=item?.name||'';$('artTags').value=item?.tags||'';$('artCategoryInput').value=item?artCategory(item):'';$('artAdd').textContent=item?'保存修改':'保存';$('artName').focus();}
+function renderArtists(){
+ const box=$('artChips');box.replaceChildren();
+ const valid=artists.filter(a=>a&&typeof a.name==='string'&&typeof a.tags==='string');
+ const categories=[...new Set(valid.map(artCategory))].sort((a,b)=>a.localeCompare(b,'zh-CN'));
+ const select=$('artFilter'),selected=select.value;select.replaceChildren(new Option('全部分类',''));
+ categories.forEach(c=>select.add(new Option(c,c)));select.value=categories.includes(selected)?selected:'';
+ const hints=$('artCategories');hints.replaceChildren();
+ [...new Set(['服装','姿势','表情','场景','画风','未分类',...categories])].forEach(c=>hints.appendChild(new Option(c,c)));
+ const query=$('artSearch').value.trim().toLocaleLowerCase();
+ const rows=valid.filter(a=>(!select.value||artCategory(a)===select.value)&&(!query||(a.name+'\n'+a.tags).toLocaleLowerCase().includes(query)));
+ const pages=Math.max(1,Math.ceil(rows.length/artPageSize));artPage=Math.max(1,Math.min(artPage,pages));
+ $('artCount').textContent=valid.length+' 条';$('artPageInfo').textContent=artPage+' / '+pages+' · '+rows.length+' 条';
+ $('artPrev').disabled=artPage===1;$('artNext').disabled=artPage===pages;
+ $('artManage').textContent=artManaging?'完成管理':'管理';$('artManage').setAttribute('aria-pressed',String(artManaging));
+ $('artHint').textContent=artManaging?'点击编辑可查看完整标签串；删除需确认。':'点击标签直接追加到正向提示词。';
+ for(const a of rows.slice((artPage-1)*artPageSize,artPage*artPageSize)){
+  const wrap=document.createElement('div');wrap.className='art-item';
+  const button=document.createElement('button');button.type='button';button.className='btn sm art-name';button.textContent=a.name;button.title=a.tags;
+  button.onclick=()=>{if(artManaging){openArtEditor(a);return;}const p=$('prompt');p.value=p.value.trim()?p.value.trim().replace(/,+$/,'')+', '+a.tags:a.tags;p.dispatchEvent(new Event('input'));toast('已插入「'+a.name+'」到正向提示词');};
+  wrap.appendChild(button);
+  if(artManaging){
+   const label=document.createElement('small');label.textContent=artCategory(a);wrap.appendChild(label);
+   const edit=document.createElement('button');edit.type='button';edit.className='btn sm';edit.textContent='编辑';edit.onclick=()=>openArtEditor(a);wrap.appendChild(edit);
+   const del=document.createElement('button');del.type='button';del.className='btn sm';del.textContent='删除';del.onclick=()=>{if(!confirm('删除「'+a.name+'」？'))return;if(saveArtists(artists.filter(item=>item!==a))){if(artEditing===a)closeArtEditor();renderArtists();}};wrap.appendChild(del);
+  }
+  box.appendChild(wrap);
+ }
+ if(!rows.length){const empty=document.createElement('p');empty.className='hint';empty.textContent=valid.length?'没有匹配的提示词，试试其他关键词或分类。':'还没有提示词，点击「＋ 新增」保存常用片段。';box.appendChild(empty);}
+}
+$('artNew').onclick=()=>openArtEditor();$('artCancel').onclick=closeArtEditor;
+$('artSearch').oninput=()=>{artPage=1;renderArtists();};$('artFilter').onchange=()=>{artPage=1;renderArtists();};
+$('artPrev').onclick=()=>{artPage--;renderArtists();};$('artNext').onclick=()=>{artPage++;renderArtists();};
+$('artManage').onclick=()=>{artManaging=!artManaging;if(!artManaging)closeArtEditor();renderArtists();};
+$('artAdd').onclick=()=>{
+ const name=$('artName').value.trim(),tags=$('artTags').value.trim(),category=$('artCategoryInput').value.trim()||'未分类';
+ if(!name||!tags)return toast('请填写名称和标签串');
+ const next=artists.slice();
+ if(artEditing){const index=next.indexOf(artEditing);if(index<0){closeArtEditor();return toast('条目已变化，请重新选择编辑');}next[index]={...artEditing,name,tags,category};}
+ else next.unshift({name,tags,category});
+ if(!saveArtists(next))return;
+ closeArtEditor();$('artSearch').value='';$('artFilter').value='';artPage=1;renderArtists();toast('提示词已保存 ♡');
+};
+try{$('artPanel').open=localStorage.getItem('ovoPromptLibraryCollapsed')!=='1';}catch(e){}
+$('artPanel').addEventListener('toggle',()=>{try{localStorage.setItem('ovoPromptLibraryCollapsed',$('artPanel').open?'0':'1');}catch(e){}});
 
 /* ---------- backup / restore ---------- */
 async function dbAll(){const database=await waitDB();return new Promise((resolve,reject)=>{const req=database.transaction('h').objectStore('h').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error);});}
@@ -1248,7 +1332,7 @@ loadCfg();renderPresets();renderChars();renderImgs();renderArtists();
 /* ---------- 面板折叠功能 ---------- */
 document.querySelectorAll('.win').forEach((win, idx) => {
   const bar = win.querySelector('.bar');
-  if (!bar) return;
+  if (!bar || bar.parentElement.id === 'artPanel') return;
   
   // 用标题文字作为唯一标识（去掉特殊符号和空格）
   const title = bar.textContent.replace(/[♡\s]/g, '').trim();
@@ -1308,18 +1392,50 @@ $('libImgDrop').onclick=()=>{
  };fi.click();
 };
 
+function collectionCategory(item){return typeof item.category==='string'&&item.category.trim()?item.category.trim():'未分类';}
+let libPage=1,libDetailReturnFocus=null;
+function closeLibDetail(){ $('libDetail').hidden=true;if(libDetailReturnFocus?.isConnected)libDetailReturnFocus.focus(); }
+function showLibDetail(item,apply,edit){
+ libDetailReturnFocus=document.activeElement;$('libDetailTitle').textContent=item.name||'未命名收藏';
+ const image=$('libDetailImage');image.src=safeImageSrc(item.img||'');image.style.display=item.img?'block':'none';
+ const box=$('libDetailText');box.replaceChildren();
+ for(const [label,key] of [['画师串','artist'],['正向提示词','prompt'],['反向提示词','neg']]){const title=document.createElement('strong');title.textContent=label;const text=document.createElement('pre');text.textContent=item[key]||'（空）';box.append(title,text);}
+ const fields=[['libApplyArtist','画师串'],['libApplyPrompt','正向词'],['libApplyNeg','反向词']].filter(([id])=>$(id).checked).map(([,label])=>label);
+ $('libDetailScope').textContent=fields.length?'将替换：'+fields.join('、')+'；收藏中的空内容也会覆盖对应输入框。':'尚未选择套用字段，请关闭详情后勾选。';
+ $('libDetailApply').disabled=!fields.length;
+ $('libDetailApply').onclick=()=>{closeLibDetail();apply();};$('libDetailEdit').onclick=()=>{closeLibDetail();edit({stopPropagation(){}});};
+ $('libDetail').hidden=false;$('libDetailClose').focus();
+}
+$('libDetailClose').onclick=closeLibDetail;
+$('libDetail').onclick=e=>{if(e.target===$('libDetail'))closeLibDetail();};
+$('libDetail').onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closeLibDetail();}if(e.key==='Tab'){const buttons=[...$('libDetail').querySelectorAll('button')].filter(b=>!b.disabled);const first=buttons[0],last=buttons[buttons.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}};
+$('libNew').onclick=()=>{ if(editingLibIndex!==-1)return toast('请先保存或取消正在编辑的收藏');$('libEditorPane').hidden=false;$('libEditorPane').querySelector('.win').classList.remove('collapsed');$('libName').focus(); };
+$('libSearch').oninput=$('libStarOnly').onchange=$('libSort').onchange=$('libCategoryFilter').onchange=()=>{libPage=1;renderLib();};
+$('libPrev').onclick=()=>{libPage--;renderLib();};$('libNext').onclick=()=>{libPage++;renderLib();};
 // 渲染灵感库列表
 function renderLib() {
   if(!Array.isArray(libData))libData=[];
 
   const box = $('libGallery');
   box.innerHTML = '';
+  const categories=[...new Set(['Q版','厚涂','平涂','未分类',...libData.map(collectionCategory)])];
+  const filter=$('libCategoryFilter'),selected=filter.value;filter.replaceChildren(new Option('全部分类',''));
+  categories.forEach(c=>filter.add(new Option(c,c)));filter.value=categories.includes(selected)?selected:'';
+  $('libCategoryOptions').replaceChildren(...categories.map(c=>new Option(c,c)));
+  const query=$('libSearch').value.trim().toLocaleLowerCase();
+  let rows=libData.filter(item=>(!filter.value||collectionCategory(item)===filter.value)&&(!$('libStarOnly').checked||item.starred===true)&&(!query||[item.name,item.artist,item.prompt,item.neg].join('\n').toLocaleLowerCase().includes(query)));
+  if($('libSort').value==='name')rows.sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-CN'));
+  if($('libSort').value==='new')rows.sort((a,b)=>(Number(b.time)||0)-(Number(a.time)||0));
+  const pages=Math.max(1,Math.ceil(rows.length/12));libPage=Math.max(1,Math.min(libPage,pages));
+  $('libTotal').textContent='共 '+libData.length+' 条 · 匹配 '+rows.length+' 条';$('libPageInfo').textContent=libPage+' / '+pages;
+  $('libPrev').disabled=libPage===1;$('libNext').disabled=libPage===pages;
   if(libData.length === 0) {
     box.innerHTML = '<div class="hint" style="grid-column:1/-1;text-align:center;padding:20px">还没有收藏，快去添加吧 ♡</div>';
     return;
   }
   
-  libData.forEach(item => {
+  if(!rows.length){box.textContent='没有匹配的收藏，试试其他关键词或取消星标筛选。';return;}
+  rows.slice((libPage-1)*12,libPage*12).forEach(item => {
     const div = document.createElement('div');
     div.className = 'lib-card';
     
@@ -1327,19 +1443,22 @@ function renderLib() {
     const imgSrc = item.img || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="#f4e6ea"/><text x="150" y="200" font-size="20" fill="#c9798f" text-anchor="middle" font-family="sans-serif">No Cover</text></svg>');
     
     div.innerHTML = `
-  <button class="del-btn">×</button>
-  <button class="edit-btn">✎</button>
+
   <img src="${attr(safeImageSrc(imgSrc))}" loading="lazy">
-  <div class="info">${esc(item.name || '未命名收藏')}</div>
+  <div class="info">${esc(item.name || '未命名收藏')}<span class="lib-category-badge">${esc(collectionCategory(item))}</span></div>
+  <div class="lib-snippet">${esc(item.prompt||item.artist||item.neg||'暂无提示词')}</div>
+  <div class="lib-actions"><button class="btn sm star-btn" aria-label="标记常用收藏">${item.starred===true?'★':'☆'}</button><button class="btn sm edit-btn">编辑</button><button class="btn sm del-btn">删除</button></div>
     `;
     // 点击编辑
 div.querySelector('.edit-btn').onclick = (e) => {
   e.stopPropagation(); // 阻止触发套用
   coverUploadVersion++;
+  $('libEditorPane').hidden=false;$('libEditorPane').querySelector('.win').classList.remove('collapsed');
   editingLibIndex = item.id; // 记录当前编辑的是哪个
   
   // 把数据塞回左侧表单
   $('libName').value = item.name || '';
+  $('libCategory').value=collectionCategory(item);
   $('libArtist').value = item.artist || '';
   $('libPrompt').value = item.prompt || '';
   $('libNeg').value = item.neg || '';
@@ -1361,18 +1480,19 @@ div.querySelector('.edit-btn').onclick = (e) => {
   $('libCancelEdit').style.display = 'block';
   
   // 滚动到表单区域
-  document.querySelector('.wrap#viewLib').scrollIntoView({behavior: 'smooth'});
+  $('libEditorPane').scrollIntoView?.({behavior:'smooth'});$('libName').focus();
 };
     
     // 点击套用
 div.onclick = (e) => {
-  if(e.target.classList.contains('del-btn')) return;
+  if(e?.target?.classList.contains('del-btn')) return;
   
   // 读取勾选状态
   const applyArtist = document.getElementById('libApplyArtist').checked;
   const applyPrompt = document.getElementById('libApplyPrompt').checked;
   const applyNeg = document.getElementById('libApplyNeg').checked;
 
+  if(!applyArtist&&!applyPrompt&&!applyNeg)return toast('请先选择要套用的字段');
   if(applyArtist && item.artist !== undefined) $('artistStr').value = item.artist;
   if(applyPrompt && item.prompt !== undefined) $('prompt').value = item.prompt;
   if(applyNeg && item.neg !== undefined) $('negative').value = item.neg;
@@ -1394,18 +1514,21 @@ div.onclick = (e) => {
       }
     };
     
+    const apply=div.onclick,edit=div.querySelector('.edit-btn').onclick;
+    div.onclick=()=>showLibDetail(item,apply,edit);div.tabIndex=0;div.setAttribute('role','button');div.setAttribute('aria-label','查看收藏：'+(item.name||'未命名收藏'));
+    div.onkeydown=e=>{if(e.target===div&&(e.key==='Enter'||e.key===' ')){e.preventDefault();div.click();}};
+    div.querySelector('.star-btn').onclick=e=>{e.stopPropagation();try{commitLib(libData.map(x=>x.id===item.id?{...x,starred:x.starred!==true}:x));renderLib();}catch(err){toast('星标保存失败：'+err.message,5000);}};
     box.appendChild(div);
   });
 }
-
 // 保存到灵感库
 $('libSaveBtn').onclick=()=>{
  const name=$('libName').value.trim(),artist=$('libArtist').value.trim(),curPrompt=$('libPrompt').value.trim(),neg=$('libNeg').value.trim();
  if(!name&&!artist&&!curPrompt)return toast('写点内容再保存吧~');
  try{
-  const entry={id:makeId(),name:name||'未命名收藏',artist,prompt:curPrompt,neg,img:currentLibImgBase64,time:Date.now()};
+  const entry={id:makeId(),name:name||'未命名收藏',category:$('libCategory').value.trim()||'未分类',artist,prompt:curPrompt,neg,img:currentLibImgBase64,time:Date.now()};
   const next=libData.slice();
-  if(editingLibIndex!==-1){const i=next.findIndex(x=>x.id===editingLibIndex);if(i<0)return toast('原收藏已删除，请取消编辑后重新添加');entry.id=next[i].id;entry.time=next[i].time;next[i]=entry;}else next.unshift(entry);
+  if(editingLibIndex!==-1){const i=next.findIndex(x=>x.id===editingLibIndex);if(i<0)return toast('原收藏已删除，请取消编辑后重新添加');entry.id=next[i].id;entry.time=next[i].time;next[i]={...next[i],...entry};}else next.unshift(entry);
   commitLib(next);resetLibForm();renderLib();toast('✅ 收藏已保存');
  }catch(e){toast('收藏保存失败：'+e.message,6000);}
 };
@@ -1549,9 +1672,11 @@ $('delCurrentBtn').onclick=async()=>{
 let editingLibIndex = -1; // -1 表示当前是新增状态
 
 function resetLibForm() {
+  $('libEditorPane').hidden=true;
   coverUploadVersion++;
   editingLibIndex = -1;
   $('libName').value = '';
+  $('libCategory').value='';
   $('libArtist').value = '';
   $('libPrompt').value = '';
   $('libNeg').value = '';
@@ -1560,7 +1685,8 @@ function resetLibForm() {
   $('libImgText').textContent = '点击上传封面缩略图（可选）';
   
   $('libSaveBtn').textContent = '💾 保存到灵感库';
-  $('libCancelEdit').style.display = 'none';
+  $('libCancelEdit').style.display = 'block';
+  $('libCancelEdit').textContent = '取消 / 收起';
 }
 
 $('libCancelEdit').onclick = () => {
