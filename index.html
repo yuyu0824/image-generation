@@ -1215,7 +1215,7 @@ function renderArtists(){
  const box=$('artChips');box.replaceChildren();
  const valid=artists.filter(a=>a&&typeof a.name==='string'&&typeof a.tags==='string');
  const categories=[...new Set(valid.map(artCategory))].sort((a,b)=>a.localeCompare(b,'zh-CN'));
- const select=$('artFilter'),selected=select.value;select.replaceChildren(new Option('全部分类',''));
+ const select=$('artFilter'),selected=select.value;if(selected&&!categories.includes(selected))categories.push(selected);select.replaceChildren(new Option('全部分类',''));
  categories.forEach(c=>select.add(new Option(c,c)));select.value=categories.includes(selected)?selected:'';
  const hints=$('artCategories');hints.replaceChildren();
  [...new Set(['服装','姿势','表情','场景','画风','未分类',...categories])].forEach(c=>hints.appendChild(new Option(c,c)));
@@ -1247,11 +1247,16 @@ $('artManage').onclick=()=>{artManaging=!artManaging;if(!artManaging)closeArtEdi
 $('artAdd').onclick=()=>{
  const name=$('artName').value.trim(),tags=$('artTags').value.trim(),category=$('artCategoryInput').value.trim()||'未分类';
  if(!name||!tags)return toast('请填写名称和标签串');
+ const wasEditing=!!artEditing;
  const next=artists.slice();
  if(artEditing){const index=next.indexOf(artEditing);if(index<0){closeArtEditor();return toast('条目已变化，请重新选择编辑');}next[index]={...artEditing,name,tags,category};}
  else next.unshift({name,tags,category});
  if(!saveArtists(next))return;
- closeArtEditor();$('artSearch').value='';$('artFilter').value='';artPage=1;renderArtists();toast('提示词已保存 ♡');
+ const selectedCategory=$('artFilter').value,query=$('artSearch').value.trim().toLocaleLowerCase();
+ const outsideFilter=wasEditing&&((selectedCategory&&category!==selectedCategory)||(query&&!(name+'\n'+tags).toLocaleLowerCase().includes(query)));
+ closeArtEditor();
+ if(!wasEditing){$('artSearch').value='';$('artFilter').value='';artPage=1;}
+ renderArtists();toast(outsideFilter?'已保存；条目不再符合当前筛选，切换分类或清除搜索即可查看':'提示词已保存 ♡');
 };
 try{$('artPanel').open=localStorage.getItem('ovoPromptLibraryCollapsed')!=='1';}catch(e){}
 $('artPanel').addEventListener('toggle',()=>{try{localStorage.setItem('ovoPromptLibraryCollapsed',$('artPanel').open?'0':'1');}catch(e){}});
